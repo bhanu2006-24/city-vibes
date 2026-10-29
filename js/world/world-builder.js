@@ -1,19 +1,23 @@
 // ============================================================
-// CITY VIBES - GTA ISLAND 3D PROCEDURAL WORLD BUILDER
-// Builds terrain, districts, buildings, bridges, water & props
+// CITY VIBES - GTA SAN ANDREAS 3D PROCEDURAL WORLD BUILDER
+// Builds authentic San Andreas territories:
+// Los Santos (Downtown, Grove St, Vinewood, Santa Maria Beach, LSX)
+// San Fierro (Chinatown, Easter Basin, Gant Red Suspension Bridge)
+// Las Venturas (The Strip, Golden Luxor Pyramid, Neon Casinos)
+// Mount Chiliad (Climbable mountain summit & lookout deck)
+// Bone County Desert & San Andreas Waterways
 // ============================================================
 
 window.WorldBuilder = {
   buildIsland(world) {
     const scene = world.scene;
-    const map = window.WorldMapData;
 
-    // 1. Surrounding Ocean (Deep blue sea boundary)
+    // 1. Deep Blue Ocean
     const oceanGeo = new THREE.PlaneGeometry(3500, 3500);
     const oceanMat = new THREE.MeshPhongMaterial({
-      color: 0x0a3d62,
+      color: 0x082032,
       shininess: 90,
-      specular: 0x4aa3df
+      specular: 0x338ba8
     });
     const ocean = new THREE.Mesh(oceanGeo, oceanMat);
     ocean.rotation.x = -Math.PI / 2;
@@ -21,9 +25,9 @@ window.WorldBuilder = {
     ocean.receiveShadow = true;
     scene.add(ocean);
 
-    // 2. Main Island Landmass (Paved terrain with coastal sand beach edges)
+    // 2. Main Landmass Terrain
     const landGeo = new THREE.BoxGeometry(1160, 2.0, 1160);
-    const landMat = new THREE.MeshLambertMaterial({ color: 0x1b281f }); // lush turf
+    const landMat = new THREE.MeshLambertMaterial({ color: 0x1e3323 }); // rich green turf
     const land = new THREE.Mesh(landGeo, landMat);
     land.position.y = -1.0;
     land.receiveShadow = true;
@@ -38,20 +42,33 @@ window.WorldBuilder = {
     sand.receiveShadow = true;
     scene.add(sand);
 
-    // 3. Central Ocean River / Canal cutting through the city
-    this.createWaterCanal(scene, 0, 0, 48, 1160, false); // North-South waterway
-    this.createWaterCanal(scene, 0, 0, 1160, 48, true);  // East-West waterway
+    // 3. San Andreas Waterway Canals (Dividing the State into 3 Regions)
+    // East-West Grand River (divides North SF/LV from South LS/Chiliad)
+    this.createWaterCanal(scene, 0, 0, 1160, 48, true);
+    // North-South Bay River (divides San Fierro from Las Venturas)
+    this.createWaterCanal(scene, 0, -280, 48, 560, false);
 
     // 4. City Asphalt Road Grid & Bridges
     this.buildRoadNetwork(world);
 
-    // 5. Build Each Distinct GTA District
-    this.buildDowntownDistrict(world);
-    this.buildViceBeachDistrict(world);
-    this.buildPortDistrict(world);
-    this.buildChinatownDistrict(world);
-    this.buildCasinoDistrict(world);
-    this.buildRedRockDistrict(world);
+    // 5. Authentic GTA San Andreas Territories
+    // Los Santos
+    this.buildDowntownLosSantos(world);
+    this.buildGroveStreet(world, 160, 330);
+    this.buildVinewoodSign(world, 50, 460);
+    this.buildSantaMariaBeach(world);
+    this.buildAirportLSX(world, 220, 450);
+
+    // San Fierro & Gant Bridge
+    this.buildSanFierroDistrict(world);
+    this.buildGantSuspensionBridge(world, -300, -380);
+
+    // Las Venturas & Casino Strip
+    this.buildLasVenturasDistrict(world);
+
+    // Mount Chiliad & Badlands
+    this.buildMountChiliad(world, -340, 380);
+    this.buildBoneCountyDesert(world);
 
     // 6. Overhead Highway Direction Signboards
     this.buildHighwayDirectionBoards(world);
@@ -60,9 +77,9 @@ window.WorldBuilder = {
   createWaterCanal(scene, x, z, width, length, isHorizontal) {
     const waterGeo = new THREE.PlaneGeometry(width, length);
     const waterMat = new THREE.MeshPhongMaterial({
-      color: 0x0e5a8a,
-      shininess: 85,
-      specular: 0x54a0ff
+      color: 0x0a4b78,
+      shininess: 90,
+      specular: 0x4aa3df
     });
     const water = new THREE.Mesh(waterGeo, waterMat);
     water.rotation.x = -Math.PI / 2;
@@ -72,13 +89,11 @@ window.WorldBuilder = {
 
   buildRoadNetwork(world) {
     const scene = world.scene;
-    const roadMat = new THREE.MeshLambertMaterial({ color: 0x1c2127 });
-    const lineMat = new THREE.MeshBasicMaterial({ color: 0xf1c40f }); // yellow centerline
-    const whiteDashMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const roadMat = new THREE.MeshLambertMaterial({ color: 0x1b2028 });
+    const lineMat = new THREE.MeshBasicMaterial({ color: 0xf1c40f }); // yellow double-line
     const curbMat = new THREE.MeshLambertMaterial({ color: 0x7f8c8d });
 
     const createAvenue = (x, z, width, length, isHorizontal) => {
-      // Asphalt pavement
       const roadGeo = new THREE.PlaneGeometry(isHorizontal ? length : width, isHorizontal ? width : length);
       const road = new THREE.Mesh(roadGeo, roadMat);
       road.rotation.x = -Math.PI / 2;
@@ -86,14 +101,12 @@ window.WorldBuilder = {
       road.receiveShadow = true;
       scene.add(road);
 
-      // Center double yellow line
       const lineGeo = new THREE.PlaneGeometry(isHorizontal ? length : 0.45, isHorizontal ? 0.45 : length);
       const line = new THREE.Mesh(lineGeo, lineMat);
       line.rotation.x = -Math.PI / 2;
       line.position.set(x, 0.12, z);
       scene.add(line);
 
-      // Concrete curbs & sidewalks
       const curbThickness = 2.4;
       if (isHorizontal) {
         [-width / 2 - curbThickness / 2, width / 2 + curbThickness / 2].forEach(offsetZ => {
@@ -110,23 +123,23 @@ window.WorldBuilder = {
       }
     };
 
-    // Main Arterials & Expressways
-    createAvenue(0, 180, 24, 760, true);   // Downtown East-West Expressway
-    createAvenue(0, -220, 24, 760, true);  // South Industrial-Casino Expressway
-    createAvenue(0, 360, 24, 820, true);   // North Outer Loop
-    createAvenue(0, -420, 24, 820, true);  // South Outer Loop
+    // Major Arterials & Highways
+    createAvenue(0, 180, 24, 760, true);   // Los Santos Central Avenue
+    createAvenue(0, -240, 24, 760, true);  // Las Venturas / SF Expressway
+    createAvenue(0, 360, 24, 820, true);   // South Coast Ring Road
+    createAvenue(0, -450, 24, 820, true);  // Julius Thruway North Loop
 
-    createAvenue(0, 0, 24, 900, false);    // Grand Central Avenue (North-South)
-    createAvenue(240, 0, 20, 900, false);  // East Bay Highway (Beach & Port)
-    createAvenue(-240, 0, 20, 900, false); // West Coast Highway (Chinatown & Casino)
-    createAvenue(440, 0, 22, 900, false);  // Ocean Coast Drive
-    createAvenue(-420, 0, 22, 900, false); // Badlands Mountain Pass
+    createAvenue(0, 0, 24, 900, false);    // State Central Expressway
+    createAvenue(300, 0, 22, 900, false);  // East Highway (LV to Santa Maria Beach)
+    createAvenue(-300, 0, 22, 900, false); // West Highway (San Fierro to Mt. Chiliad)
+    createAvenue(450, 0, 20, 900, false);  // Ocean Coastline Promenade
+    createAvenue(-450, 0, 20, 900, false); // Badlands Foothills Pass
 
-    // Massive Concrete Bridges over the waterways
-    this.createBridge(scene, 0, 0, 28, 70, false);   // Central Crossing Bridge
-    this.createBridge(scene, 0, 0, 70, 28, true);    // Central Crossing Bridge (East-West)
-    this.createBridge(scene, 240, 0, 24, 70, false); // Beach-Port Bridge
-    this.createBridge(scene, -240, 0, 24, 70, false);// Chinatown-Casino Bridge
+    // Concrete Crossing Bridges over the Grand Waterway
+    this.createBridge(scene, 0, 0, 28, 70, false);   // Central State Bridge
+    this.createBridge(scene, 300, 0, 24, 70, false); // Las Venturas - Los Santos Highway Bridge
+    this.createBridge(scene, -300, 0, 24, 70, false);// San Fierro - Flint County Bridge
+    this.createBridge(scene, 0, -280, 70, 24, true); // East-West Bay Crossing Bridge
   },
 
   createBridge(scene, x, z, width, length, isHorizontal) {
@@ -138,7 +151,6 @@ window.WorldBuilder = {
     deck.position.y = 0.6;
     bridgeGroup.add(deck);
 
-    // Steel Arch Pillars & Guardrails
     const railMat = new THREE.MeshLambertMaterial({ color: 0x95a5a6 });
     if (isHorizontal) {
       [-width / 2, width / 2].forEach(offsetZ => {
@@ -158,39 +170,39 @@ window.WorldBuilder = {
   },
 
   // ------------------------------------------------------------
-  // 1. DOWNTOWN METROPOLIS (Skyscrapers, Citadel, Bank, Hospital)
+  // 1. LOS SANTOS DOWNTOWN (Citadel/Maze Tower, Bank, Hospital)
   // ------------------------------------------------------------
-  buildDowntownDistrict(world) {
+  buildDowntownLosSantos(world) {
     const scene = world.scene;
 
-    // Citadel 138-meter Skyscraper
+    // Citadel / Maze Bank 138-meter Skyscraper
     this.buildCitadelTower(world, 0, 250);
 
-    // First National Bank & Vault
+    // Maze Bank & Vault
     this.buildBankBuilding(world, 12, 195);
 
-    // St. Jude Hospital ER
+    // All Saints Hospital ER
     this.buildHospital(world, -39, 120);
 
-    // Luigi's Pizzeria
+    // Well Stacked Pizzeria
     this.buildPizzeria(world, 80, 140);
 
     // Metro Cab HQ
     this.buildTaxiDepot(world, 30, 70);
 
-    // Apex Exotic Dealership
+    // Apex Exotic Motors Dealership
     this.buildCarDealership(world, 110, 240);
 
-    // Apex Construction Co. Landmark
+    // Apex Construction Co. (Property Renovations)
     this.buildConstructionOffice(world, -100, 140);
 
     // 24/7 SuperMart Downtown
     this.buildSuperMart(world, -70, 200, '24/7 SuperMart Downtown');
 
     // Downtown Loft Real Estate
-    this.buildPropertyBeacon(world, 60, 220, 'downtown_loft', 'Downtown Loft ($55,000)');
+    this.buildPropertyBeacon(world, 60, 220, 'downtown_loft', 'Downtown Los Santos Loft ($55,000)');
 
-    // Surrounding Downtown High-Rise Skyscrapers
+    // Surrounding Downtown Los Santos Skyscrapers
     const towers = [
       { x: -50, z: 270, w: 26, d: 26, h: 85, c: 0x1e272e },
       { x: 50, z: 270, w: 28, d: 24, h: 95, c: 0x2f3640 },
@@ -200,16 +212,152 @@ window.WorldBuilder = {
       { x: 50, z: 100, w: 26, d: 24, h: 60, c: 0x1e272e },
       { x: -80, z: 90, w: 24, d: 24, h: 55, c: 0x34495e }
     ];
-
     towers.forEach(t => {
       this.createBuilding(world, t.x, t.z, t.w, t.d, t.h, t.c);
     });
   },
 
   // ------------------------------------------------------------
-  // 2. VICE BEACH & MARINA (Villas, Palms, Sand, Motel)
+  // GROVE STREET CUL-DE-SAC (CJ'S HOUSE, BASKETBALL HOOP)
   // ------------------------------------------------------------
-  buildViceBeachDistrict(world) {
+  buildGroveStreet(world, x, z) {
+    const scene = world.scene;
+    const gGroup = new THREE.Group();
+    gGroup.position.set(x, 0, z);
+
+    // Circular asphalt cul-de-sac
+    const culDeSacAsphalt = new THREE.Mesh(
+      new THREE.CircleGeometry(26, 32),
+      new THREE.MeshLambertMaterial({ color: 0x22272e })
+    );
+    culDeSacAsphalt.rotation.x = -Math.PI / 2;
+    culDeSacAsphalt.position.y = 0.11;
+    gGroup.add(culDeSacAsphalt);
+
+    // Center circular grass island
+    const centerGrass = new THREE.Mesh(
+      new THREE.CircleGeometry(7.5, 24),
+      new THREE.MeshLambertMaterial({ color: 0x27ae60 })
+    );
+    centerGrass.rotation.x = -Math.PI / 2;
+    centerGrass.position.y = 0.14;
+    gGroup.add(centerGrass);
+
+    // Center palm tree
+    this.createPalmTree(scene, x, z);
+
+    // CJ's Iconic House (Johnson House)
+    const cjHouseMat = new THREE.MeshLambertMaterial({ color: 0xf5f6fa });
+    const cjRoofMat = new THREE.MeshLambertMaterial({ color: 0x2ecc71 }); // Green roof
+    const cjHouse = new THREE.Mesh(new THREE.BoxGeometry(16, 7.5, 14), cjHouseMat);
+    cjHouse.position.set(0, 3.75, 28);
+    gGroup.add(cjHouse);
+
+    const cjRoof = new THREE.Mesh(new THREE.ConeGeometry(13, 4, 4), cjRoofMat);
+    cjRoof.position.set(0, 9.5, 28);
+    cjRoof.rotation.y = Math.PI / 4;
+    gGroup.add(cjRoof);
+
+    // Front porch
+    const porch = new THREE.Mesh(new THREE.BoxGeometry(10, 0.4, 4), new THREE.MeshLambertMaterial({ color: 0x8c7ae6 }));
+    porch.position.set(0, 0.2, 19);
+    gGroup.add(porch);
+
+    // Neighboring houses on the ring
+    const houseAngles = [Math.PI * 0.4, Math.PI * 0.75, Math.PI * 1.25, Math.PI * 1.6];
+    houseAngles.forEach(ang => {
+      const hx = Math.cos(ang) * 32;
+      const hz = Math.sin(ang) * 32;
+      const house = new THREE.Mesh(new THREE.BoxGeometry(14, 7, 12), new THREE.MeshLambertMaterial({ color: 0xdcdde1 }));
+      house.position.set(hx, 3.5, hz);
+      house.rotation.y = -ang + Math.PI / 2;
+      gGroup.add(house);
+
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(11, 3.5, 4), new THREE.MeshLambertMaterial({ color: 0x718093 }));
+      roof.position.set(hx, 8.75, hz);
+      roof.rotation.y = -ang + Math.PI / 2 + Math.PI / 4;
+      gGroup.add(roof);
+
+      world.addCollider(x + hx, z + hz, 16, 14);
+    });
+
+    world.addCollider(x, z + 28, 18, 16);
+
+    // Basketball Hoop & Half Court
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 5, 8), new THREE.MeshLambertMaterial({ color: 0x2f3640 }));
+    pole.position.set(-16, 2.5, 0);
+    gGroup.add(pole);
+
+    const backboard = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2.0, 3.0), new THREE.MeshLambertMaterial({ color: 0xffffff }));
+    backboard.position.set(-15.8, 4.4, 0);
+    gGroup.add(backboard);
+
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.06, 8, 16), new THREE.MeshBasicMaterial({ color: 0xe67e22 }));
+    rim.rotation.x = Math.PI / 2;
+    rim.position.set(-15.1, 3.8, 0);
+    gGroup.add(rim);
+
+    // Grove Street Interactive Zone
+    world.addInteractiveZone({
+      id: 'grove_street_hub',
+      name: "Grove Street Cul-de-Sac (CJ's House)",
+      position: new THREE.Vector3(x, 0.5, z + 12),
+      color: 0x2ecc71
+    });
+
+    scene.add(gGroup);
+  },
+
+  // ------------------------------------------------------------
+  // VINEWOOD GIANT 3D SIGN
+  // ------------------------------------------------------------
+  buildVinewoodSign(world, x, z) {
+    const scene = world.scene;
+    const hillMat = new THREE.MeshLambertMaterial({ color: 0x2e4a2e });
+    const hill = new THREE.Mesh(new THREE.ConeGeometry(80, 24, 8), hillMat);
+    hill.position.set(x, 12, z);
+    scene.add(hill);
+
+    // 8 White 3D Block Letters: V I N E W O O D
+    const letters = ['V', 'I', 'N', 'E', 'W', 'O', 'O', 'D'];
+    const letterGroup = new THREE.Group();
+    letterGroup.position.set(x - 35, 23, z - 8);
+
+    const letterMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const postMat = new THREE.MeshLambertMaterial({ color: 0x475569 });
+
+    letters.forEach((char, idx) => {
+      const lx = idx * 10;
+      // Support frame posts
+      const postL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 7, 0.3), postMat);
+      postL.position.set(lx - 2, 3.5, -0.6);
+      letterGroup.add(postL);
+
+      const postR = new THREE.Mesh(new THREE.BoxGeometry(0.3, 7, 0.3), postMat);
+      postR.position.set(lx + 2, 3.5, -0.6);
+      letterGroup.add(postR);
+
+      // Letter mesh
+      const block = new THREE.Mesh(new THREE.BoxGeometry(6.5, 7.5, 0.6), letterMat);
+      block.position.set(lx, 6.5, 0);
+      letterGroup.add(block);
+    });
+
+    scene.add(letterGroup);
+    world.addCollider(x, z, 90, 30);
+
+    world.addInteractiveZone({
+      id: 'vinewood_lookout',
+      name: 'Vinewood Giant Sign Lookout',
+      position: new THREE.Vector3(x, 24, z - 20),
+      color: 0xffffff
+    });
+  },
+
+  // ------------------------------------------------------------
+  // 2. SANTA MARIA BEACH & MARINA (Villas, Palms, Sand, Motel)
+  // ------------------------------------------------------------
+  buildSantaMariaBeach(world) {
     // Urban Threads Clothes Boutique
     this.buildClothesBoutique(world, 320, 150);
 
@@ -229,7 +377,7 @@ window.WorldBuilder = {
     this.buildPropertyBeacon(world, 280, 260, 'motel_studio', 'Sunset Motel Studio #4 ($3,500)');
 
     // Luxury Beachfront Villa Real Estate
-    this.buildPropertyBeacon(world, 420, 280, 'beachfront_villa', 'Vice Beachfront Villa ($320,000)');
+    this.buildPropertyBeacon(world, 420, 280, 'beachfront_villa', 'Santa Maria Beachfront Villa ($320,000)');
 
     // Beachside Villas & Apartments
     const villas = [
@@ -250,81 +398,119 @@ window.WorldBuilder = {
   },
 
   // ------------------------------------------------------------
-  // 3. LIBERTY INDUSTRIAL PORT (Cranes, Containers, Armory, Customs)
+  // LOS SANTOS INTERNATIONAL AIRPORT (LSX)
   // ------------------------------------------------------------
-  buildPortDistrict(world) {
+  buildAirportLSX(world, x, z) {
+    const scene = world.scene;
+    const airportGroup = new THREE.Group();
+    airportGroup.position.set(x, 0, z);
+
+    // Main Runway Tarmac
+    const runway = new THREE.Mesh(
+      new THREE.PlaneGeometry(36, 180),
+      new THREE.MeshLambertMaterial({ color: 0x181a1f })
+    );
+    runway.rotation.x = -Math.PI / 2;
+    runway.position.y = 0.12;
+    airportGroup.add(runway);
+
+    // Dashed Runway Centerline
+    for (let rz = -80; rz <= 80; rz += 16) {
+      const dash = new THREE.Mesh(
+        new THREE.PlaneGeometry(1.2, 8),
+        new THREE.MeshBasicMaterial({ color: 0xffffff })
+      );
+      dash.rotation.x = -Math.PI / 2;
+      dash.position.set(0, 0.14, rz);
+      airportGroup.add(dash);
+    }
+
+    // Octagonal Flight Control Tower
+    const tower = new THREE.Mesh(
+      new THREE.CylinderGeometry(4.5, 6.0, 38, 8),
+      new THREE.MeshLambertMaterial({ color: 0xdcdde1 })
+    );
+    tower.position.set(-32, 19, 0);
+    airportGroup.add(tower);
+
+    const cabGlass = new THREE.Mesh(
+      new THREE.CylinderGeometry(7.5, 7.0, 6, 8),
+      new THREE.MeshPhongMaterial({ color: 0x00cec9, transparent: true, opacity: 0.75 })
+    );
+    cabGlass.position.set(-32, 38, 0);
+    airportGroup.add(cabGlass);
+    world.addCollider(x - 32, z, 16, 16);
+
+    // Aircraft Hangar
+    const hangarMat = new THREE.MeshLambertMaterial({ color: 0x718093 });
+    const hangar = new THREE.Mesh(new THREE.BoxGeometry(45, 16, 35), hangarMat);
+    hangar.position.set(-45, 8, -50);
+    airportGroup.add(hangar);
+    world.addCollider(x - 45, z - 50, 48, 38);
+
+    // Executive Twin-Prop Airplane on Tarmac
+    const planeGroup = new THREE.Group();
+    planeGroup.position.set(0, 2.2, -40);
+
+    const fuseMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+    const fuselage = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 18, 12), fuseMat);
+    fuselage.rotation.x = Math.PI / 2;
+    planeGroup.add(fuselage);
+
+    const wings = new THREE.Mesh(new THREE.BoxGeometry(22, 0.25, 3.2), fuseMat);
+    wings.position.set(0, 0.2, -2);
+    planeGroup.add(wings);
+
+    const tail = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3.8, 2.4), new THREE.MeshLambertMaterial({ color: 0x0984e3 }));
+    tail.position.set(0, 2.2, 7.5);
+    planeGroup.add(tail);
+
+    airportGroup.add(planeGroup);
+
+    world.addInteractiveZone({
+      id: 'airport_lsx',
+      name: 'Los Santos International Airport (LSX)',
+      position: new THREE.Vector3(x, 0.5, z - 20),
+      color: 0x00f0ff
+    });
+
+    scene.add(airportGroup);
+  },
+
+  // ------------------------------------------------------------
+  // 3. SAN FIERRO (Chinatown, Easter Basin Docks, Customs)
+  // ------------------------------------------------------------
+  buildSanFierroDistrict(world) {
     const scene = world.scene;
 
-    // City Customs Mechanic Workshop
-    this.buildCustomsShop(world, 260, -210);
+    // The Black Lotus Guild Safehouse (Dark Web Assassins)
+    this.buildAssassinGuild(world, -240, -150);
 
-    // Underground Armory
-    this.buildArmoryShop(world, 330, -240);
+    // Traditional Pagoda Entrance Arch
+    this.createPagodaGate(scene, -240, -110);
 
-    // Port Warehouse Real Estate
-    this.buildPropertyBeacon(world, 390, -350, 'port_warehouse', 'Liberty Port Container Warehouse ($180,000)');
+    // TransFender Customs & Tuning Workshop
+    this.buildCustomsShop(world, -200, -210);
 
-    // ATM Kiosk Port
+    // San Fierro Port ATM
     world.addInteractiveZone({
-      id: 'atm_port',
-      name: 'Port Marine ATM Kiosk',
-      position: new THREE.Vector3(280, 0.5, -200),
+      id: 'atm_sf_port',
+      name: 'San Fierro Port ATM Kiosk',
+      position: new THREE.Vector3(-240, 0.5, -190),
       color: 0x00f0ff,
       action: 'open_bank_atm'
     });
 
-    // Warehouses
-    const warehouses = [
-      { x: 220, z: -270, w: 34, d: 26, h: 16, c: 0x7f8c8d },
-      { x: 310, z: -320, w: 38, d: 28, h: 18, c: 0x95a5a6 },
-      { x: 370, z: -280, w: 36, d: 26, h: 18, c: 0xbdc3c7 }
-    ];
-    warehouses.forEach(wh => {
-      this.createBuilding(world, wh.x, wh.z, wh.w, wh.d, wh.h, wh.c);
-    });
-
-    // Stacks of Shipping Containers
-    const containerColors = [0xe74c3c, 0x3498db, 0xf1c40f, 0x2ecc71];
-    const spots = [
-      { x: 300, z: -380 }, { x: 340, z: -380 }, { x: 380, z: -380 },
-      { x: 420, z: -320 }, { x: 420, z: -350 }
-    ];
-    spots.forEach(pt => {
-      for (let level = 0; level < 3; level++) {
-        const c = containerColors[(level + pt.x) % containerColors.length];
-        const box = new THREE.Mesh(
-          new THREE.BoxGeometry(12, 3.2, 5),
-          new THREE.MeshLambertMaterial({ color: c })
-        );
-        box.position.set(pt.x, 1.6 + level * 3.2, pt.z);
-        scene.add(box);
-      }
-      world.addCollider(pt.x, pt.z, 14, 7);
-    });
-
-    // Giant 32-meter Industrial Cargo Cranes
-    this.createCargoCrane(scene, 420, -260);
-    this.createCargoCrane(scene, 420, -380);
-  },
-
-  // ------------------------------------------------------------
-  // 4. NEO-CHINATOWN DISTRICT (Pagoda Gate, Lanterns, Guild)
-  // ------------------------------------------------------------
-  buildChinatownDistrict(world) {
-    const scene = world.scene;
-
-    // The Black Lotus Guild Safehouse (Dark Web Assassins)
-    this.buildAssassinGuild(world, -240, 150);
-
-    // Traditional Pagoda Entrance Arch
-    this.createPagodaGate(scene, -240, 260);
+    // San Fierro Container Warehouse Real Estate
+    this.buildPropertyBeacon(world, -360, -300, 'port_warehouse', 'San Fierro Port Container Warehouse ($180,000)');
 
     // Chinatown Bazaars & Tenements
     const buildings = [
-      { x: -200, z: 190, w: 22, d: 20, h: 26, c: 0xc0392b },
-      { x: -280, z: 190, w: 22, d: 20, h: 28, c: 0x962d22 },
-      { x: -200, z: 110, w: 24, d: 22, h: 24, c: 0xd35400 },
-      { x: -280, z: 110, w: 24, d: 22, h: 26, c: 0xb03a2e }
+      { x: -200, z: -160, w: 22, d: 20, h: 26, c: 0xc0392b },
+      { x: -280, z: -160, w: 22, d: 20, h: 28, c: 0x962d22 },
+      { x: -200, z: -250, w: 24, d: 22, h: 32, c: 0x2c3e50 },
+      { x: -280, z: -250, w: 24, d: 22, h: 36, c: 0x34495e },
+      { x: -340, z: -200, w: 26, d: 24, h: 42, c: 0x1e272e }
     ];
     buildings.forEach(b => {
       this.createBuilding(world, b.x, b.z, b.w, b.d, b.h, b.c);
@@ -336,64 +522,251 @@ window.WorldBuilder = {
         new THREE.SphereGeometry(0.65, 8, 8),
         new THREE.MeshBasicMaterial({ color: 0xff0033 })
       );
-      lantern.position.set(lx, 6.5, 150);
+      lantern.position.set(lx, 6.5, -150);
       scene.add(lantern);
     }
+
+    // Easter Basin Docks: Shipping Containers & Cranes
+    const containerColors = [0xe74c3c, 0x3498db, 0xf1c40f, 0x2ecc71];
+    const spots = [
+      { x: -320, z: -320 }, { x: -360, z: -320 }, { x: -400, z: -320 },
+      { x: -400, z: -260 }, { x: -400, z: -200 }
+    ];
+    spots.forEach(pt => {
+      for (let level = 0; level < 3; level++) {
+        const c = containerColors[(level + Math.abs(pt.x)) % containerColors.length];
+        const box = new THREE.Mesh(
+          new THREE.BoxGeometry(12, 3.2, 5),
+          new THREE.MeshLambertMaterial({ color: c })
+        );
+        box.position.set(pt.x, 1.6 + level * 3.2, pt.z);
+        scene.add(box);
+      }
+      world.addCollider(pt.x, pt.z, 14, 7);
+    });
+
+    // Giant 32-meter Industrial Cargo Cranes
+    this.createCargoCrane(scene, -420, -280);
+    this.createCargoCrane(scene, -420, -360);
   },
 
   // ------------------------------------------------------------
-  // 5. LAS PALMAS CASINO STRIP (Neon Strip, Pyramid, Penthouses)
+  // GANT RED SUSPENSION BRIDGE (SAN FIERRO TO BONE COUNTY)
   // ------------------------------------------------------------
-  buildCasinoDistrict(world) {
+  buildGantSuspensionBridge(world, x, z) {
+    const scene = world.scene;
+    const bridgeGroup = new THREE.Group();
+    bridgeGroup.position.set(x, 0, z);
+
+    const redSteelMat = new THREE.MeshLambertMaterial({ color: 0xd63031 }); // Golden Gate red
+    const cableMat = new THREE.MeshBasicMaterial({ color: 0xff7675 });
+    const deckMat = new THREE.MeshLambertMaterial({ color: 0x2d3436 });
+
+    // Roadway Deck spanning 120m across the bay
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(20, 1.4, 120), deckMat);
+    deck.position.y = 1.0;
+    bridgeGroup.add(deck);
+
+    // Two 42-meter Red Steel Suspension Towers
+    [-35, 35].forEach(tz => {
+      [-9, 9].forEach(tx => {
+        const towerPillar = new THREE.Mesh(new THREE.BoxGeometry(2.4, 42, 2.4), redSteelMat);
+        towerPillar.position.set(tx, 21, tz);
+        bridgeGroup.add(towerPillar);
+      });
+
+      // Arch Crossbeams
+      [15, 28, 40].forEach(cy => {
+        const beam = new THREE.Mesh(new THREE.BoxGeometry(18, 1.6, 2.2), redSteelMat);
+        beam.position.set(0, cy, tz);
+        bridgeGroup.add(beam);
+      });
+    });
+
+    // Sweeping Suspension Cables
+    [-8.5, 8.5].forEach(cx => {
+      const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 120, 8), cableMat);
+      cable.position.set(cx, 28, 0);
+      cable.rotation.x = Math.PI / 2;
+      bridgeGroup.add(cable);
+
+      // Vertical hanger stays
+      for (let hy = -50; hy <= 50; hy += 10) {
+        const stay = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 26, 6), cableMat);
+        stay.position.set(cx, 14, hy);
+        bridgeGroup.add(stay);
+      }
+    });
+
+    world.addInteractiveZone({
+      id: 'gant_bridge_zone',
+      name: 'Gant Red Suspension Bridge',
+      position: new THREE.Vector3(x, 1.5, z),
+      color: 0xe74c3c
+    });
+
+    scene.add(bridgeGroup);
+  },
+
+  // ------------------------------------------------------------
+  // 4. LAS VENTURAS & CASINO STRIP (The Strip, Pyramid, Armory)
+  // ------------------------------------------------------------
+  buildLasVenturasDistrict(world) {
     const scene = world.scene;
 
-    // Golden Luxor-Style Casino Pyramid
-    const pyrGeo = new THREE.ConeGeometry(38, 48, 4);
+    // Golden Luxor-Style Casino Pyramid ("The Camel's Toe")
+    const pyrGeo = new THREE.ConeGeometry(42, 52, 4);
     const pyrMat = new THREE.MeshPhongMaterial({ color: 0xd4ac0d, shininess: 95 });
     const pyramid = new THREE.Mesh(pyrGeo, pyrMat);
-    pyramid.position.set(-270, 24, -270);
+    pyramid.position.set(300, 26, -260);
     pyramid.rotation.y = Math.PI / 4;
     scene.add(pyramid);
-    world.addCollider(-270, -270, 56, 56);
+    world.addCollider(300, -260, 60, 60);
 
-    // Casino High-Roller Penthouse Real Estate
-    this.buildPropertyBeacon(world, -260, -290, 'casino_penthouse', 'Casino High-Roller Penthouse ($750,000)');
+    // Bright Vertical Sky Beam Shooting Up into the Sky
+    const beam = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.2, 12, 180, 16, 1, true),
+      new THREE.MeshBasicMaterial({ color: 0x00f0ff, transparent: true, opacity: 0.65, side: THREE.DoubleSide })
+    );
+    beam.position.set(300, 90, -260);
+    scene.add(beam);
 
-    // 24/7 SuperMart Casino Strip
-    this.buildSuperMart(world, -220, -240, '24/7 SuperMart Casino Strip');
+    // Ammu-Nation Las Venturas Armory
+    this.buildArmoryShop(world, 240, -200);
 
-    // ATM Kiosk Casino
+    // The Strip 24/7 SuperMart
+    this.buildSuperMart(world, 260, -240, 'The Strip 24/7 Mart');
+
+    // Golden Pyramid ATM Kiosk
     world.addInteractiveZone({
       id: 'atm_casino',
       name: 'Golden Pyramid ATM Kiosk',
-      position: new THREE.Vector3(-270, 0.5, -220),
+      position: new THREE.Vector3(310, 0.5, -250),
       color: 0x00f0ff,
       action: 'open_bank_atm'
     });
 
-    // Neon Casino Hotel Towers
+    // Casino High-Roller Penthouse Real Estate
+    this.buildPropertyBeacon(world, 320, -320, 'casino_penthouse', 'Las Venturas High-Roller Penthouse ($750,000)');
+
+    // Neon Casino Hotel Towers (The Visage, Caligula's, Pirates)
     const casinos = [
-      { x: -200, z: -270, w: 26, d: 24, h: 65, c: 0x8e44ad },
-      { x: -340, z: -270, w: 28, d: 24, h: 72, c: 0x2c3e50 },
-      { x: -270, z: -350, w: 32, d: 26, h: 58, c: 0x16a085 }
+      { x: 230, z: -270, w: 26, d: 24, h: 68, c: 0x8e44ad },
+      { x: 370, z: -270, w: 28, d: 24, h: 76, c: 0x2c3e50 },
+      { x: 300, z: -350, w: 32, d: 26, h: 62, c: 0x16a085 }
     ];
     casinos.forEach(c => {
       this.createBuilding(world, c.x, c.z, c.w, c.d, c.h, c.c);
     });
+
+    // Palm trees lining the Strip
+    for (let pz = -350; pz <= -160; pz += 30) {
+      this.createPalmTree(scene, 285, pz);
+      this.createPalmTree(scene, 315, pz);
+    }
   },
 
   // ------------------------------------------------------------
-  // 6. RED ROCK BADLANDS & MOUNT CHILIAD (Sandstone Mesas, Trails)
+  // 5. MOUNT CHILIAD (Climbable Summit Lookout & Pine Forest)
   // ------------------------------------------------------------
-  buildRedRockDistrict(world) {
+  buildMountChiliad(world, x, z) {
     const scene = world.scene;
+    const mountainMat = new THREE.MeshLambertMaterial({ color: 0x5d4037 }); // rugged brown mountain rock
+    const greenMat = new THREE.MeshLambertMaterial({ color: 0x2e4a2e });
 
-    // Sandstone Canyon Mesas
+    // Multi-tiered stepped mountain peak
+    // Base tier (140x140, h:12)
+    const tier1 = new THREE.Mesh(new THREE.BoxGeometry(140, 12, 140), greenMat);
+    tier1.position.set(x, 6, z);
+    scene.add(tier1);
+    world.addCollider(x, z, 142, 142);
+
+    // Tier 2 (100x100, h:24)
+    const tier2 = new THREE.Mesh(new THREE.BoxGeometry(100, 24, 100), mountainMat);
+    tier2.position.set(x, 12, z);
+    scene.add(tier2);
+
+    // Tier 3 (65x65, h:36)
+    const tier3 = new THREE.Mesh(new THREE.BoxGeometry(65, 36, 65), mountainMat);
+    tier3.position.set(x, 18, z);
+    scene.add(tier3);
+
+    // Summit Tier (32x32, h:48)
+    const summit = new THREE.Mesh(new THREE.BoxGeometry(32, 48, 32), mountainMat);
+    summit.position.set(x, 24, z);
+    scene.add(summit);
+
+    // Wooden Summit Lookout Observation Platform on top
+    const deckMat = new THREE.MeshLambertMaterial({ color: 0x8d6e63 });
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(26, 1.0, 26), deckMat);
+    deck.position.set(x, 48.5, z);
+    scene.add(deck);
+
+    // Timber Guardrails
+    const railMat = new THREE.MeshLambertMaterial({ color: 0x4e342e });
+    [-12, 12].forEach(rz => {
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(24, 1.4, 0.4), railMat);
+      rail.position.set(x, 49.5, z + rz);
+      scene.add(rail);
+    });
+    [-12, 12].forEach(rx => {
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.4, 24), railMat);
+      rail.position.set(x + rx, 49.5, z);
+      scene.add(rail);
+    });
+
+    // Summit Teleport / Fast Travel Beacon (Walk onto to stand on top of San Andreas!)
+    world.addInteractiveZone({
+      id: 'mount_chiliad_base_lift',
+      name: 'Mount Chiliad Summit Trail (Climb to 48m Lookout)',
+      position: new THREE.Vector3(x, 0.5, z - 75),
+      color: 0x27ae60,
+      action: 'teleport',
+      targetPos: new THREE.Vector3(x, 49.2, z)
+    });
+
+    // Summit Deck Down to Trail Base
+    world.addInteractiveZone({
+      id: 'mount_chiliad_summit_deck',
+      name: 'Mount Chiliad Summit Lookout Deck (Down to Base)',
+      position: new THREE.Vector3(x, 49.0, z - 8),
+      color: 0x27ae60,
+      action: 'teleport',
+      targetPos: new THREE.Vector3(x, 1.0, z - 80)
+    });
+
+    // Mount Chiliad Country Compound Real Estate
+    this.buildPropertyBeacon(world, -380, 420, 'desert_safehouse', 'Mount Chiliad Country Compound ($28,000)');
+
+    // Pine Trees on slopes
+    const pineMat = new THREE.MeshLambertMaterial({ color: 0x1b4332 });
+    const trunkMat = new THREE.MeshLambertMaterial({ color: 0x4a2810 });
+    const treeOffsets = [
+      [-60, -50], [60, -50], [-60, 50], [60, 50],
+      [-40, -60], [40, -60], [-40, 60], [40, 60]
+    ];
+    treeOffsets.forEach(([dx, dz]) => {
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 6, 8), trunkMat);
+      trunk.position.set(x + dx, 3, z + dz);
+      scene.add(trunk);
+
+      const foliage = new THREE.Mesh(new THREE.ConeGeometry(3.5, 9, 8), pineMat);
+      foliage.position.set(x + dx, 9, z + dz);
+      scene.add(foliage);
+    });
+  },
+
+  // ------------------------------------------------------------
+  // 6. BONE COUNTY & RED ROCK DESERT (Mesas, Cacti)
+  // ------------------------------------------------------------
+  buildBoneCountyDesert(world) {
+    const scene = world.scene;
     const mesaMat = new THREE.MeshLambertMaterial({ color: 0xa0522d });
+
     const mesas = [
-      { x: -330, z: 410, w: 60, d: 55, h: 32 },
-      { x: -420, z: 460, w: 75, d: 65, h: 44 },
-      { x: -260, z: 460, w: 55, d: 50, h: 28 }
+      { x: 0, z: -380, w: 70, d: 55, h: 32 },
+      { x: -80, z: -440, w: 65, d: 50, h: 28 },
+      { x: 80, z: -440, w: 65, d: 50, h: 28 }
     ];
     mesas.forEach(m => {
       const b = new THREE.Mesh(new THREE.BoxGeometry(m.w, m.h, m.d), mesaMat);
@@ -402,14 +775,20 @@ window.WorldBuilder = {
       world.addCollider(m.x, m.z, m.w + 2, m.d + 2);
     });
 
-    // Desert Safehouse Real Estate
-    this.buildPropertyBeacon(world, -380, 420, 'desert_safehouse', 'Red Rock Badlands Compound ($28,000)');
+    // Saguaro Cacti
+    const cactusMat = new THREE.MeshLambertMaterial({ color: 0x27ae60 });
+    const cacti = [
+      { x: -30, z: -340 }, { x: 30, z: -340 }, { x: -40, z: -410 }, { x: 40, z: -410 }
+    ];
+    cacti.forEach(c => {
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 8, 8), cactusMat);
+      trunk.position.set(c.x, 4, c.z);
+      scene.add(trunk);
 
-    // Lookout Fire Tower
-    const towerMat = new THREE.MeshLambertMaterial({ color: 0x5c4033 });
-    const tower = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 3.5, 24, 8), towerMat);
-    tower.position.set(-330, 44, 410);
-    scene.add(tower);
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(3, 0.8, 0.8), cactusMat);
+      arm.position.set(c.x + 1.2, 5, c.z);
+      scene.add(arm);
+    });
   },
 
   // ------------------------------------------------------------
@@ -472,7 +851,6 @@ window.WorldBuilder = {
   buildBankBuilding(world, x, z) {
     this.createBuilding(world, x, z, 32, 28, 22, 0x1e3799);
 
-    // Bank Vault Heist Zone
     world.addInteractiveZone({
       id: 'bank_vault',
       name: 'First National Bank & Vault Heist',
@@ -481,7 +859,6 @@ window.WorldBuilder = {
       action: 'open_bank'
     });
 
-    // Physical ATM Kiosk
     world.addInteractiveZone({
       id: 'bank_atm_downtown',
       name: 'First National ATM Kiosk (Deposit / Withdraw)',
@@ -495,7 +872,7 @@ window.WorldBuilder = {
     this.createBuilding(world, x, z, 34, 28, 20, 0xffffff);
     world.addInteractiveZone({
       id: 'hospital_ambulance_job',
-      name: 'St. Jude Paramedic Depot (Start Shift)',
+      name: 'Los Saints Hospital ER (Start Paramedic Shift)',
       position: new THREE.Vector3(x, 0.5, z - 16),
       color: 0xe74c3c,
       action: 'ambulance_job'
@@ -506,7 +883,7 @@ window.WorldBuilder = {
     this.createBuilding(world, x, z, 26, 22, 14, 0xd35400);
     world.addInteractiveZone({
       id: 'pizzeria_delivery_job',
-      name: "Luigi's Pizza Delivery (Start Shift)",
+      name: "Well Stacked Pizza Delivery (Start Shift)",
       position: new THREE.Vector3(x, 0.5, z - 13),
       color: 0xf39c12,
       action: 'delivery_job'
@@ -550,7 +927,7 @@ window.WorldBuilder = {
     this.createBuilding(world, x, z, 34, 28, 16, 0x8e44ad);
     world.addInteractiveZone({
       id: 'mechanic_zone',
-      name: 'City Customs Mechanic (Tune, Repair & NOS)',
+      name: 'TransFender Customs (Tune, Repair & NOS)',
       position: new THREE.Vector3(x, 0.5, z - 16),
       color: 0x9b59b6,
       action: 'open_mechanic'
@@ -561,7 +938,7 @@ window.WorldBuilder = {
     this.createBuilding(world, x, z, 28, 24, 14, 0x2c3e50);
     world.addInteractiveZone({
       id: 'armory_zone',
-      name: 'Underground Armory (Silenced Weapons & Scope)',
+      name: 'Ammu-Nation Armory (Silenced Weapons & Sniper)',
       position: new THREE.Vector3(x, 0.5, z - 14),
       color: 0x2c3e50,
       action: 'open_armory'
@@ -583,7 +960,7 @@ window.WorldBuilder = {
     this.createBuilding(world, x, z, 26, 22, 16, 0x111111);
     world.addInteractiveZone({
       id: 'guild_zone',
-      name: 'The Black Lotus Guild (Dark Web Contracts)',
+      name: 'The Black Lotus Guild (San Fierro Safehouse)',
       position: new THREE.Vector3(x, 0.5, z - 13),
       color: 0xff0055,
       action: 'open_guild'
@@ -613,7 +990,6 @@ window.WorldBuilder = {
     });
   },
 
-  // Props: Palm Trees, Cranes, Gates
   createPalmTree(scene, x, z) {
     const trunk = new THREE.Mesh(
       new THREE.CylinderGeometry(0.28, 0.38, 9, 8),
@@ -666,12 +1042,12 @@ window.WorldBuilder = {
 
   buildHighwayDirectionBoards(world) {
     const boards = [
-      { x: 0, z: 290, dir: 'VICE BEACH 1.2 KM ➔', speed: 'MAX 120 MPH' },
-      { x: 180, z: 180, dir: '⬆ DOWNTOWN CORE 0.8 KM', speed: 'MAX 100 MPH' },
-      { x: 240, z: -100, dir: '⬇ LIBERTY INDUSTRIAL PORT', speed: 'TRUCK ROUTE' },
-      { x: -140, z: 180, dir: '⬆ NEO-CHINATOWN BAZAAR', speed: 'MAX 60 MPH' },
-      { x: -240, z: -100, dir: '⬇ LAS PALMAS CASINO STRIP', speed: 'MAX 120 MPH' },
-      { x: -240, z: 300, dir: '⬆ RED ROCK BADLANDS & HILLS', speed: 'STEEP TRAIL' }
+      { x: 0, z: 290, dir: '⬆ LOS SANTOS / VINEWOOD', speed: 'FREEWAY 120 MPH' },
+      { x: 180, z: 180, dir: '➔ SANTA MARIA BEACH & AIRPORT', speed: 'MAX 80 MPH' },
+      { x: 300, z: -120, dir: '⬆ LAS VENTURAS / CASINO STRIP', speed: 'JULIUS THRUWAY' },
+      { x: -180, z: 180, dir: '➔ MOUNT CHILIAD LOOKOUT (48m)', speed: 'STEEP PASS' },
+      { x: -300, z: -120, dir: '⬆ SAN FIERRO / GANT BRIDGE', speed: 'MAX 100 MPH' },
+      { x: 0, z: -240, dir: '⬆ BONE COUNTY RED DESERT', speed: 'ROUTE 66' }
     ];
 
     boards.forEach(b => {
@@ -689,7 +1065,6 @@ window.WorldBuilder = {
       beam.position.set(0, 7.8, 0);
       gantry.add(beam);
 
-      // Canvas signboard
       const canvas = document.createElement('canvas');
       canvas.width = 512;
       canvas.height = 128;
@@ -701,12 +1076,12 @@ window.WorldBuilder = {
       ctx.strokeRect(6, 6, 500, 116);
 
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 30px sans-serif';
-      ctx.fillText(b.dir, 24, 55);
+      ctx.font = 'bold 28px sans-serif';
+      ctx.fillText(b.dir, 20, 55);
 
       ctx.fillStyle = '#f1c40f';
       ctx.font = 'bold 22px monospace';
-      ctx.fillText(b.speed, 24, 98);
+      ctx.fillText(b.speed, 20, 98);
 
       const texture = new THREE.CanvasTexture(canvas);
       const signMesh = new THREE.Mesh(

@@ -1,5 +1,5 @@
 // ============================================================
-// CITY VIBES - GTA CIRCULAR RADAR & FULL ISLAND MAP
+// CITY VIBES - GTA CIRCULAR RADAR & AUTHENTIC SAN ANDREAS FULL MAP
 // ============================================================
 
 window.MinimapSystem = {
@@ -30,19 +30,19 @@ window.MinimapSystem = {
     const playerPos = ui.game.player.position;
 
     // 1. Water Canals on Radar
-    ctx.fillStyle = '#0a3d62';
-    // North-South river
-    const riverX = center + (0 - playerPos.x) * scale;
-    ctx.fillRect(riverX - 24 * scale, 0, 48 * scale, size);
-    // East-West river
+    ctx.fillStyle = '#0a4b78';
+    // East-West Grand River
     const riverZ = center + (0 - playerPos.z) * scale;
     ctx.fillRect(0, riverZ - 24 * scale, size, 48 * scale);
+    // North-South Bay River (North of Z=0)
+    const riverX = center + (0 - playerPos.x) * scale;
+    ctx.fillRect(riverX - 24 * scale, 0, 48 * scale, size);
 
     // 2. City Roads Grid
     ctx.strokeStyle = '#22303c';
     ctx.lineWidth = 7;
 
-    const avenues = [-240, -120, 0, 120, 240, 360, -360];
+    const avenues = [-300, -180, 0, 180, 300, 450, -450];
     avenues.forEach(av => {
       // Vertical Avenues
       const rx = center + (av - playerPos.x) * scale;
@@ -255,59 +255,169 @@ window.MinimapSystem = {
 
   drawFullMap(ui, ctx, size) {
     const center = size / 2;
-    const mapScale = (size * 0.82) / 1200; // fits 1200m island cleanly inside full screen
+    const mapScale = (size * 0.84) / 1200;
 
     ctx.clearRect(0, 0, size, size);
 
-    // Deep Ocean Background
-    ctx.fillStyle = '#09253d';
+    // Deep Ocean Background (San Andreas Ocean)
+    ctx.fillStyle = '#071a2c';
     ctx.fillRect(0, 0, size, size);
 
-    // Main Island Landmass
-    const landSize = 1160 * mapScale;
-    ctx.fillStyle = '#1b281f';
-    ctx.fillRect(center - landSize / 2, center - landSize / 2, landSize, landSize);
-    ctx.strokeStyle = '#f5cd79'; // sand border
-    ctx.lineWidth = 4;
-    ctx.strokeRect(center - landSize / 2, center - landSize / 2, landSize, landSize);
+    // ------------------------------------------------------------
+    // 1. SAN ANDREAS 3 DISTINCT REGIONS & LANDMASSES
+    // ------------------------------------------------------------
+    const toScreen = (x, z) => ({
+      x: center + x * mapScale,
+      y: center + z * mapScale
+    });
 
-    // River Canals
-    ctx.fillStyle = '#0e5a8a';
-    ctx.fillRect(center - 18 * mapScale, center - landSize / 2, 36 * mapScale, landSize);
-    ctx.fillRect(center - landSize / 2, center - 18 * mapScale, landSize, 36 * mapScale);
+    // 1A. South-East Island: LOS SANTOS & SANTA MARIA BEACH
+    ctx.fillStyle = '#1b3222';
+    const lsP1 = toScreen(-100, 20);
+    const lsW = 620 * mapScale;
+    const lsH = 500 * mapScale;
+    ctx.fillRect(lsP1.x, lsP1.y, lsW, lsH);
 
-    // Expressways & Bridges
-    ctx.strokeStyle = '#34495e';
-    ctx.lineWidth = 5;
-    const avenues = [-240, 0, 240];
-    avenues.forEach(av => {
-      const rx = center + av * mapScale;
+    // Sandy Beach along East & South coast
+    ctx.fillStyle = '#f5cd79';
+    ctx.fillRect(lsP1.x + lsW - 35 * mapScale, lsP1.y, 35 * mapScale, lsH);
+    ctx.fillRect(lsP1.x, lsP1.y + lsH - 25 * mapScale, lsW, 25 * mapScale);
+
+    // 1B. South-West Island: MOUNT CHILIAD & FLINT COUNTY
+    ctx.fillStyle = '#1a2e1d';
+    const mcP1 = toScreen(-520, 20);
+    const mcW = 400 * mapScale;
+    const mcH = 500 * mapScale;
+    ctx.fillRect(mcP1.x, mcP1.y, mcW, mcH);
+
+    // Mount Chiliad Topographic Contours
+    const mcCenter = toScreen(-340, 380);
+    ctx.fillStyle = '#3e2723';
+    ctx.beginPath();
+    ctx.arc(mcCenter.x, mcCenter.y, 65 * mapScale, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#4e342e';
+    ctx.beginPath();
+    ctx.arc(mcCenter.x, mcCenter.y, 45 * mapScale, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#6d4c41';
+    ctx.beginPath();
+    ctx.arc(mcCenter.x, mcCenter.y, 25 * mapScale, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 1C. North-West Island: SAN FIERRO & CHINATOWN
+    ctx.fillStyle = '#22303c';
+    const sfP1 = toScreen(-520, -520);
+    const sfW = 420 * mapScale;
+    const sfH = 500 * mapScale;
+    ctx.fillRect(sfP1.x, sfP1.y, sfW, sfH);
+
+    // 1D. North-East Island: LAS VENTURAS & BONE COUNTY DESERT
+    ctx.fillStyle = '#8d6e40'; // desert sand
+    const lvP1 = toScreen(80, -520);
+    const lvW = 440 * mapScale;
+    const lvH = 500 * mapScale;
+    ctx.fillRect(lvP1.x, lvP1.y, lvW, lvH);
+
+    // Bone County Center (Mesas)
+    ctx.fillStyle = '#a0522d';
+    const bcP1 = toScreen(-100, -520);
+    ctx.fillRect(bcP1.x, bcP1.y, 180 * mapScale, 400 * mapScale);
+
+    // ------------------------------------------------------------
+    // 2. SAN ANDREAS WATERWAY CANALS & BAY
+    // ------------------------------------------------------------
+    ctx.fillStyle = '#0a4b78';
+    // Grand East-West River (separating North from South)
+    const ewRiverY = toScreen(0, -10).y;
+    ctx.fillRect(0, ewRiverY, size, 32 * mapScale);
+
+    // North-South Bay (separating San Fierro from Las Venturas)
+    const nsBayX = toScreen(-40, 0).x;
+    ctx.fillRect(nsBayX, 0, 48 * mapScale, ewRiverY + 32 * mapScale);
+
+    // ------------------------------------------------------------
+    // 3. HIGHWAY NETWORK & BRIDGES
+    // ------------------------------------------------------------
+    // Julius Thruway ring (Las Venturas)
+    ctx.strokeStyle = '#f1c40f'; // Gold highway
+    ctx.lineWidth = 4 * mapScale;
+    const jtP1 = toScreen(100, -450);
+    const jtP2 = toScreen(450, -100);
+    ctx.strokeRect(jtP1.x, jtP1.y, jtP2.x - jtP1.x, jtP2.y - jtP1.y);
+
+    // Gant Red Suspension Bridge (San Fierro crossing north)
+    ctx.strokeStyle = '#e74c3c'; // Iconic Red Bridge
+    ctx.lineWidth = 6 * mapScale;
+    const gbStart = toScreen(-300, -450);
+    const gbEnd = toScreen(-300, -310);
+    ctx.beginPath();
+    ctx.moveTo(gbStart.x, gbStart.y);
+    ctx.lineTo(gbEnd.x, gbEnd.y);
+    ctx.stroke();
+
+    // Central Crossing Bridges over the Grand River
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 5 * mapScale;
+    const bridges = [
+      { x: -300, z1: -30, z2: 40 },
+      { x: 0, z1: -30, z2: 40 },
+      { x: 300, z1: -30, z2: 40 }
+    ];
+    bridges.forEach(b => {
+      const p1 = toScreen(b.x, b.z1);
+      const p2 = toScreen(b.x, b.z2);
       ctx.beginPath();
-      ctx.moveTo(rx, center - landSize / 2);
-      ctx.lineTo(rx, center + landSize / 2);
-      ctx.stroke();
-
-      const rz = center + av * mapScale;
-      ctx.beginPath();
-      ctx.moveTo(center - landSize / 2, rz);
-      ctx.lineTo(center + landSize / 2, rz);
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
       ctx.stroke();
     });
 
-    // Districts
+    // Los Santos Urban Grid
+    ctx.strokeStyle = '#34495e';
+    ctx.lineWidth = 3 * mapScale;
+    [-20, 80, 180, 280, 380].forEach(gx => {
+      const p1 = toScreen(gx, 60);
+      const p2 = toScreen(gx, 440);
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.stroke();
+    });
+    [80, 180, 280, 380].forEach(gz => {
+      const p1 = toScreen(-20, gz);
+      const p2 = toScreen(440, gz);
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.stroke();
+    });
+
+    // LSX Airport Runway (white stripes)
+    const r1 = toScreen(220, 370);
+    const r2 = toScreen(220, 470);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 5 * mapScale;
+    ctx.beginPath();
+    ctx.moveTo(r1.x, r1.y);
+    ctx.lineTo(r2.x, r2.y);
+    ctx.stroke();
+
+    // ------------------------------------------------------------
+    // 4. DISTRICT LABELS & TAXI HUBS
+    // ------------------------------------------------------------
     const districts = window.WorldMapData.districts;
     const playerPos = ui.game.player.position;
 
     districts.forEach(d => {
-      const dx = center + d.center.x * mapScale;
-      const dz = center + d.center.z * mapScale;
+      const pos = toScreen(d.center.x, d.center.z);
       const isCurrent = (ui.game.world.currentDistrictId === d.id);
 
-      ctx.fillStyle = isCurrent ? 'rgba(0, 240, 255, 0.22)' : 'rgba(255, 255, 255, 0.08)';
+      ctx.fillStyle = isCurrent ? 'rgba(0, 240, 255, 0.25)' : 'rgba(0, 0, 0, 0.45)';
       ctx.strokeStyle = '#' + d.color.toString(16).padStart(6, '0');
       ctx.lineWidth = isCurrent ? 2.5 : 1.5;
       ctx.beginPath();
-      ctx.arc(dx, dz, 45 * mapScale * 1.8, 0, Math.PI * 2);
+      ctx.arc(pos.x, pos.y, 48 * mapScale, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
 
@@ -316,35 +426,38 @@ window.MinimapSystem = {
       ctx.textAlign = 'center';
       ctx.shadowColor = '#000000';
       ctx.shadowBlur = 4;
-      ctx.fillText(d.name, dx, dz - 8);
+      ctx.fillText(d.name, pos.x, pos.y - 8);
       ctx.shadowBlur = 0;
 
       const dist = Math.round(playerPos.distanceTo(d.center));
       ctx.fillStyle = '#cbd5e1';
-      ctx.font = '10px sans-serif';
-      ctx.fillText(`${dist}m • Taxi ($200)`, dx, dz + 12);
+      ctx.font = '10px monospace';
+      ctx.fillText(`${dist}m • Taxi ($200)`, pos.x, pos.y + 12);
     });
 
-    // Interactive Landmarks on Full Map
+    // ------------------------------------------------------------
+    // 5. ICONIC GTA SAN ANDREAS LANDMARK BLIPS
+    // ------------------------------------------------------------
     if (ui.game.world && ui.game.world.interactiveSpots) {
       ui.game.world.interactiveSpots.forEach(spot => {
-        const sx = center + spot.position.x * mapScale;
-        const sz = center + spot.position.z * mapScale;
-
+        const p = toScreen(spot.position.x, spot.position.z);
         ctx.fillStyle = '#' + (spot.color ? spot.color.toString(16).padStart(6, '0') : '00f0ff');
         ctx.beginPath();
-        ctx.arc(sx, sz, 4, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, 4.5, 0, Math.PI * 2);
         ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.stroke();
       });
     }
 
-    // Player Pin
-    const px = center + playerPos.x * mapScale;
-    const pz = center + playerPos.z * mapScale;
-
+    // ------------------------------------------------------------
+    // 6. PLAYER PIN & HEADING
+    // ------------------------------------------------------------
+    const pp = toScreen(playerPos.x, playerPos.z);
     ctx.fillStyle = '#00f0ff';
     ctx.beginPath();
-    ctx.arc(px, pz, 7, 0, Math.PI * 2);
+    ctx.arc(pp.x, pp.y, 7, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 2;
@@ -353,20 +466,39 @@ window.MinimapSystem = {
     ctx.fillStyle = '#00f0ff';
     ctx.font = 'bold 11px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('YOU', px, pz - 12);
+    ctx.shadowColor = '#000000';
+    ctx.shadowBlur = 3;
+    ctx.fillText('YOU', pp.x, pp.y - 12);
+    ctx.shadowBlur = 0;
 
-    // Legend
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-    ctx.fillRect(16, size - 48, 220, 36);
-    ctx.strokeStyle = 'rgba(0, 240, 255, 0.4)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(16, size - 48, 220, 36);
+    // ------------------------------------------------------------
+    // 7. MAP BANNER & LEGEND
+    // ------------------------------------------------------------
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+    ctx.fillRect(16, 16, 320, 52);
+    ctx.strokeStyle = 'rgba(0, 240, 255, 0.5)';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(16, 16, 320, 52);
 
-    ctx.fillStyle = '#cbd5e1';
-    ctx.font = '11px monospace';
+    ctx.fillStyle = '#00f0ff';
+    ctx.font = 'bold 15px sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText('GTA ISLAND STATE: 1200m × 1200m', 24, size - 30);
-    ctx.fillText('CLICK ANY DISTRICT FOR TAXI ($200)', 24, size - 16);
+    ctx.fillText('STATE OF SAN ANDREAS', 26, 38);
+
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '11px sans-serif';
+    ctx.fillText('Los Santos • San Fierro • Las Venturas • Mt. Chiliad', 26, 56);
+
+    // Fast travel instruction footer
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+    ctx.fillRect(16, size - 46, 260, 32);
+    ctx.strokeStyle = 'rgba(241, 196, 15, 0.5)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(16, size - 46, 260, 32);
+
+    ctx.fillStyle = '#f1c40f';
+    ctx.font = 'bold 11px monospace';
+    ctx.fillText('🚖 CLICK ANY DISTRICT FOR TAXI ($200)', 24, size - 26);
   },
 
   handleMaximizedMapClick(ui, e) {
@@ -377,7 +509,7 @@ window.MinimapSystem = {
 
     const size = canvas.width;
     const center = size / 2;
-    const mapScale = (size * 0.82) / 1200;
+    const mapScale = (size * 0.84) / 1200;
 
     const worldX = (clickX - center) / mapScale;
     const worldZ = (clickY - center) / mapScale;
@@ -385,7 +517,7 @@ window.MinimapSystem = {
 
     const districts = window.WorldMapData.districts;
     let closestDistrict = null;
-    let minDist = 180;
+    let minDist = 220;
 
     districts.forEach(d => {
       const dist = clickPos.distanceTo(new THREE.Vector3(d.center.x, 0, d.center.z));
