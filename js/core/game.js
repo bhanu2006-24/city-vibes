@@ -511,3 +511,4 @@ class CityGame {
 window.addEventListener('DOMContentLoaded', () => {
   new CityGame();
 });
+

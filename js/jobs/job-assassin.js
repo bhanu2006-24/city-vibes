@@ -64,3 +64,4 @@ window.AssassinGuildContracts = [
     completed: false
   }
 ];
+

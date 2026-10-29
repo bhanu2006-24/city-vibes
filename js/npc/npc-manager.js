@@ -322,3 +322,4 @@ class PedestrianManager {
 }
 
 window.PedestrianManager = PedestrianManager;
+

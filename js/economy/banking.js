@@ -73,3 +73,4 @@ window.BankingSystem = {
     economy.saveState();
   }
 };
+

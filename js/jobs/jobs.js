@@ -252,3 +252,4 @@ class JobManager {
 }
 
 window.JobManager = JobManager;
+
