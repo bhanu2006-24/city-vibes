@@ -67,6 +67,26 @@ A complete 3D open-world city simulation game built with **Vanilla JavaScript, H
 - **Passive Rent Income**: Every 45 seconds, tenant rental income is automatically collected and deposited directly into your bank account!
 - **Renovations & Upgrades**: Upgrade properties to Level 2+ to boost rental yields by 50%+.
 
+### 8. 🗺️ Massive 1400x1400 Multi-Region City & Rooftop Sniping
+- **6 Interconnected Districts & Cities**:
+  - **Metropolis Downtown**: Towering glass-and-steel skyscrapers, central civic plaza, and the 138-meter Citadel Tower.
+  - **Vice Beach & Ocean Bay**: Golden sandy beaches, luxury coastal villas, palm trees, ocean waves, and yacht marina.
+  - **Maple Valley Suburbs**: Peaceful cul-de-sacs, residential bungalows, manicured green lawns, and suburban parks.
+  - **Industrial Port & Docks**: Heavy cargo shipping containers, industrial cranes, dark warehouses, and freight depots.
+  - **Badlands Desert Outskirts**: Arid sand plains, rocky canyons, outlaw scrapyards, and dusty truck stops.
+  - **Chinatown / Neo District**: Glowing red hanging lanterns, pagoda-roofed pavilions, and vibrant neon alleyways.
+- **Citadel Express Elevator & Rooftop Vantage Point**:
+  - Take the express elevator at the base of the Citadel Tower up to the **138-meter high Rooftop Helipad & Sniper Vantage Point**.
+  - Provides a panoramic 360-degree view of the entire city and the ideal high-altitude perch for long-range sniper assassinations!
+- **Luxury Penthouse Safehouse Interior**:
+  - Take the private elevator up to your Penthouse suite; rest in the master bed to fully heal 100% HP.
+
+### 9. 💥 Vehicle Collisions, Car Jacking, Pedestrian Ragdolls & Cash Drops
+- **Dynamic Vehicle Ramming**: Collide with other vehicles to deliver kinetic impacts with screeching tires and metal scrape effects.
+- **Traffic Car Jacking**: Approach any stopped traffic car and press `E` to commandeer the vehicle.
+- **Pedestrian Impacts**: Running into pedestrians at high speed knocks them down ragdoll-style and triggers 911 police dispatch.
+- **Floating Cash Pickups**: Neutralized targets and pedestrians drop green spinning 3D cash stacks — walk or drive over them to pocket instant cash!
+
 ---
 
 ## ⌨️ Controls & Keybindings

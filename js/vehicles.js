@@ -700,7 +700,7 @@ class VehicleManager {
     const targetZ = v.group.position.z + moveStep.z;
     const carRadius = 1.3;
 
-    // Sliding collision check for vehicle
+    // Sliding collision check for vehicle with world buildings
     if (!this.world.checkCollision(targetX, targetZ, carRadius)) {
       v.group.position.x = targetX;
       v.group.position.z = targetZ;
@@ -713,8 +713,95 @@ class VehicleManager {
         v.speed *= 0.85;
       } else {
         // Direct crash
-        v.speed = -v.speed * 0.25;
+        v.speed = -v.speed * 0.3;
         window.soundManager.playGunshot(true);
+      }
+    }
+
+    // ------------------------------------------------------------
+    // PHYSICAL VEHICLE COLLISIONS (TRAFFIC & PEDESTRIANS)
+    // ------------------------------------------------------------
+    if (window.game && window.game.pedestrianManager) {
+      const pm = window.game.pedestrianManager;
+
+      // 1. Collide with Traffic Cars: Crash, shove, stop & steal!
+      for (let i = 0; i < pm.trafficCars.length; i++) {
+        const traffic = pm.trafficCars[i];
+        const dist = v.group.position.distanceTo(traffic.group.position);
+
+        if (dist < 3.2) {
+          // Dynamic vehicle-to-vehicle collision
+          const pushDir = traffic.group.position.clone().sub(v.group.position);
+          pushDir.y = 0;
+          pushDir.normalize();
+
+          traffic.group.position.addScaledVector(pushDir, 1.8);
+          traffic.speed = 0; // stop their car!
+          v.speed = -v.speed * 0.4; // rebound player car
+
+          window.soundManager.playHorn();
+          window.soundManager.playGunshot(true);
+
+          if (window.gameUI) {
+            window.gameUI.showNotification('💥 CAR CRASH! Traffic stopped. You can hijack their vehicle with [E]!', 'warning', 3500);
+          }
+        }
+      }
+
+      // 2. Vehicular Impact with Pedestrians (Run over & drop money!)
+      if (Math.abs(v.speed) > 4.5) {
+        // Check ambient pedestrians
+        for (let i = 0; i < pm.pedestrians.length; i++) {
+          const ped = pm.pedestrians[i];
+          if (ped.isDead) continue;
+
+          const pDist = v.group.position.distanceTo(ped.mesh.position);
+
+          // Near miss: scare and dodge!
+          if (pDist < 10.0 && pDist > 2.2) {
+            ped.isPanicked = true;
+            ped.panicTimer = 4.0;
+            ped.speed = 9.0;
+          }
+
+          // Direct Hit / Run Over!
+          if (pDist <= 2.2) {
+            ped.isDead = true;
+            ped.mesh.rotation.x = Math.PI / 2;
+            ped.mesh.position.y = 0.25;
+
+            window.soundManager.playGunshot(true);
+
+            // Drop cash on the street!
+            const droppedCash = Math.floor(80 + Math.random() * 220);
+            if (window.game.economy) {
+              window.game.economy.spawnCashPickup(ped.mesh.position, droppedCash);
+            }
+
+            // Alert police
+            if (window.game.player) {
+              window.game.player.addPoliceHeat(1);
+            }
+
+            if (window.gameUI) {
+              window.gameUI.showNotification(`💥 VEHICULAR HIT! Pedestrian down! Dropped +$${droppedCash} cash. Police alerted!`, 'error', 4500);
+            }
+          }
+        }
+
+        // Check guild targets
+        for (let i = 0; i < pm.targets.length; i++) {
+          const target = pm.targets[i];
+          if (target.isDead) continue;
+
+          const tDist = v.group.position.distanceTo(target.mesh.position);
+          if (tDist <= 2.4) {
+            pm.killTarget(target);
+            if (window.game.economy) {
+              window.game.economy.spawnCashPickup(target.mesh.position, 1000);
+            }
+          }
+        }
       }
     }
 

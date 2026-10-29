@@ -96,8 +96,62 @@ class EconomyManager {
     this.rentCycleDuration = 45;
     this.rentTimer = this.rentCycleDuration;
 
+    // Floating Cash Pickups in 3D world
+    this.cashPickups = [];
+
     // Load saved game from LocalStorage
     this.loadState();
+  }
+
+  spawnCashPickup(pos, amount = 150) {
+    const group = new THREE.Group();
+    group.position.set(pos.x, 0.4, pos.z);
+
+    // Cash stack bundle mesh
+    const stackGeo = new THREE.BoxGeometry(0.8, 0.35, 0.5);
+    const stackMat = new THREE.MeshPhongMaterial({ color: 0x27ae60, shininess: 80 });
+    const stack = new THREE.Mesh(stackGeo, stackMat);
+    group.add(stack);
+
+    // White paper band wrap
+    const bandGeo = new THREE.BoxGeometry(0.82, 0.36, 0.16);
+    const bandMat = new THREE.MeshBasicMaterial({ color: 0xf4f6f6 });
+    const band = new THREE.Mesh(bandGeo, bandMat);
+    group.add(band);
+
+    // Glowing green aura
+    const glowGeo = new THREE.SphereGeometry(0.65, 8, 8);
+    const glowMat = new THREE.MeshBasicMaterial({
+      color: 0x2ecc71,
+      transparent: true,
+      opacity: 0.35
+    });
+    const glow = new THREE.Mesh(glowGeo, glowMat);
+    group.add(glow);
+
+    this.game.scene.add(group);
+
+    const pickup = {
+      group: group,
+      amount: amount,
+      initialY: 0.4,
+      animTimer: Math.random() * 5
+    };
+
+    this.cashPickups.push(pickup);
+    return pickup;
+  }
+
+  collectPickup(pickup, idx) {
+    this.addCash(pickup.amount);
+    window.soundManager.playCash();
+
+    if (window.gameUI) {
+      window.gameUI.showNotification(`💵 +$${pickup.amount.toLocaleString()} Cash Picked Up!`, 'success', 3000);
+    }
+
+    this.game.scene.remove(pickup.group);
+    this.cashPickups.splice(idx, 1);
   }
 
   addCash(amount) {
@@ -399,6 +453,23 @@ class EconomyManager {
     if (this.rentTimer <= 0) {
       this.rentTimer = this.rentCycleDuration;
       this.collectRentCycle();
+    }
+
+    // Animate & collect cash pickups
+    const playerPos = this.game.vehicleManager.activeVehicle
+      ? this.game.vehicleManager.activeVehicle.group.position
+      : this.game.player.position;
+
+    for (let i = this.cashPickups.length - 1; i >= 0; i--) {
+      const p = this.cashPickups[i];
+      p.animTimer += delta * 3.5;
+      p.group.rotation.y += delta * 2.2;
+      p.group.position.y = p.initialY + Math.sin(p.animTimer) * 0.15;
+
+      const dist = p.group.position.distanceTo(playerPos);
+      if (dist < 3.2) {
+        this.collectPickup(p, i);
+      }
     }
   }
 }

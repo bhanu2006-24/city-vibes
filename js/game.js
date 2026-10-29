@@ -331,6 +331,21 @@ class CityGame {
     // 3. Check interactive landmarks
     const nearSpot = this.world.getNearestInteractive(this.player.position, 5.2);
     if (nearSpot) {
+      if (nearSpot.action === 'teleport' || nearSpot.action === 'teleport_heal') {
+        if (nearSpot.targetPos) {
+          this.player.setPosition(nearSpot.targetPos);
+          this.player.velocity.set(0, 0, 0);
+          if (nearSpot.action === 'teleport_heal') {
+            this.player.health = this.player.maxHealth;
+            window.soundManager.playCashSound();
+            this.ui.showNotification('🛌 Rested in Luxury Penthouse Safehouse: 100% HP Restored!', 'success', 5000);
+          } else {
+            window.soundManager.playNotification(true);
+            this.ui.showNotification(`🛗 ${nearSpot.name}`, 'info', 4000);
+          }
+        }
+        return;
+      }
       if (nearSpot.action === 'ambulance_job') {
         this.jobs.startAmbulanceShift();
       } else if (nearSpot.action === 'delivery_job') {
@@ -413,6 +428,10 @@ class CityGame {
 
     const nearSpot = this.world.getNearestInteractive(this.player.position, 5.2);
     if (nearSpot) {
+      if (nearSpot.action === 'teleport' || nearSpot.action === 'teleport_heal') {
+        this.ui.showInteractionPrompt(`[E] ${nearSpot.name}`);
+        return;
+      }
       this.ui.showInteractionPrompt(`[E] Enter ${nearSpot.name}`);
       return;
     }

@@ -21,46 +21,66 @@ class JobManager {
     this.game.scene.add(this.beaconGroup);
     this.beaconGroup.visible = false;
 
-    // Available Assassin Contracts
+    // Available Assassin Contracts across all 6 Regions
     this.assassinContracts = [
       {
         id: 'contract_1',
         targetName: "Viktor 'The Fixer' Vance",
         title: 'Corrupt Syndicate Banker',
-        desc: 'Vance laundered millions from the Black Lotus family and is preparing to flee the city on a private yacht.',
+        desc: 'Vance laundered millions from the Black Lotus family and is preparing to flee the city on a private yacht at Vice Beach Marina.',
         bounty: 15000,
         completed: false,
-        spawnLocation: new THREE.Vector3(120, 1, -180),
+        spawnLocation: new THREE.Vector3(320, 1, -60),
         status: 'available'
       },
       {
         id: 'contract_2',
         targetName: 'Councilman Sterling',
         title: 'Bribed City Politician',
-        desc: 'Sterling is pushing bills to seize our safehouses under the guise of urban redevelopment. Terminate him.',
+        desc: 'Sterling is pushing bills to seize our safehouses under the guise of urban redevelopment. Terminate him at his Maple Valley Suburbs estate.',
         bounty: 22000,
         completed: false,
-        spawnLocation: new THREE.Vector3(-80, 1, 140),
+        spawnLocation: new THREE.Vector3(260, 1, 300),
         status: 'available'
       },
       {
         id: 'contract_3',
         targetName: "Dante 'Ghost' Moretti",
         title: 'Rival Hitman',
-        desc: 'A rogue assassin taking contracts on our members. Spotted scouting Downtown high-rises.',
+        desc: 'A rogue assassin taking contracts on our members. Spotted lurking beneath the red lanterns of the Chinatown Neon District.',
         bounty: 28000,
         completed: false,
-        spawnLocation: new THREE.Vector3(-15, 1, -120),
+        spawnLocation: new THREE.Vector3(39, 1, -260),
         status: 'available'
       },
       {
         id: 'contract_4',
         targetName: 'Helena Cross',
         title: 'Underground Tech Smuggler',
-        desc: 'Intercepted encrypted guild comms. Eliminate her before she sells the access codes to authorities.',
+        desc: 'Intercepted encrypted guild comms. Eliminate her at the Industrial Port Container Terminal before she sells access codes.',
         bounty: 35000,
         completed: false,
-        spawnLocation: new THREE.Vector3(180, 1, 60),
+        spawnLocation: new THREE.Vector3(-260, 1, -260),
+        status: 'available'
+      },
+      {
+        id: 'contract_5',
+        targetName: "'Mad Dog' Callahan",
+        title: 'Desert Outlaw Kingpin',
+        desc: 'Running illegal arms shipments through the North-West Badlands Desert. Neutralize him at his desert outpost hideout.',
+        bounty: 42000,
+        completed: false,
+        spawnLocation: new THREE.Vector3(-280, 1, 280),
+        status: 'available'
+      },
+      {
+        id: 'contract_6',
+        targetName: 'Baroness Von Brandt',
+        title: 'Syndicate Oligarch',
+        desc: 'High-value target walking in the Downtown Citadel Plaza. Tip: Ride the Citadel Express Elevator to the 138m Rooftop for a clean sniper elimination!',
+        bounty: 50000,
+        completed: false,
+        spawnLocation: new THREE.Vector3(39, 1, -15),
         status: 'available'
       }
     ];
@@ -116,10 +136,12 @@ class JobManager {
 
   nextAmbulanceCall() {
     const locations = [
-      { name: 'Downtown Crosswalk', pos: new THREE.Vector3(30, 1, -40) },
-      { name: 'Maple Grove Suburb', pos: new THREE.Vector3(140, 1, 150) },
-      { name: 'Industrial Pier 9', pos: new THREE.Vector3(-120, 1, -160) },
-      { name: 'Sunset Motel Parking', pos: new THREE.Vector3(-150, 1, 90) }
+      { name: 'Downtown Metropolis Plaza', pos: new THREE.Vector3(39, 1, 10) },
+      { name: 'Vice Beach Boardwalk', pos: new THREE.Vector3(340, 1, 20) },
+      { name: 'Maple Valley Suburbs Park', pos: new THREE.Vector3(270, 1, 270) },
+      { name: 'Industrial Shipping Port Gate 3', pos: new THREE.Vector3(-270, 1, -250) },
+      { name: 'Badlands Desert Highway Diner', pos: new THREE.Vector3(-280, 1, 260) },
+      { name: 'Chinatown Lantern Crossing', pos: new THREE.Vector3(39, 1, -270) }
     ];
     const pick = locations[Math.floor(Math.random() * locations.length)];
 
@@ -130,9 +152,9 @@ class JobManager {
       locationName: pick.name,
       pickupPos: pick.pos,
       dropoffPos: this.hospitalPos,
-      timeLeft: 75, // 75 seconds to reach patient
-      maxTime: 75,
-      payout: 2500 + Math.floor(Math.random() * 1500)
+      timeLeft: 90, // 90 seconds to reach patient across large city
+      maxTime: 90,
+      payout: 3500 + Math.floor(Math.random() * 2000)
     };
 
     this.setBeacon(this.activeMission.pickupPos, 0xff2222);
@@ -159,10 +181,12 @@ class JobManager {
 
   nextDeliveryOrder() {
     const customers = [
-      { name: 'Apartment 12B', pos: new THREE.Vector3(-70, 1, 60) },
-      { name: 'The Citadel Penthouse Lobby', pos: new THREE.Vector3(15, 1, 20) },
-      { name: 'Harbor Crest Mansion', pos: new THREE.Vector3(160, 1, -150) },
-      { name: 'Tech District Office', pos: new THREE.Vector3(80, 1, -70) }
+      { name: 'Vice Beach Ocean Villa 8', pos: new THREE.Vector3(330, 1, -90) },
+      { name: 'The Citadel Penthouse Lobby', pos: new THREE.Vector3(39, 1, 15) },
+      { name: 'Maple Valley Suburb Residence', pos: new THREE.Vector3(250, 1, 310) },
+      { name: 'Industrial Port Crane Control Office', pos: new THREE.Vector3(-260, 1, -230) },
+      { name: 'Chinatown Dim Sum House', pos: new THREE.Vector3(45, 1, -250) },
+      { name: 'Badlands Outpost Workshop', pos: new THREE.Vector3(-270, 1, 250) }
     ];
     const pick = customers[Math.floor(Math.random() * customers.length)];
 
@@ -173,9 +197,9 @@ class JobManager {
       customerName: pick.name,
       pickupPos: this.pizzeriaPos,
       dropoffPos: pick.pos,
-      timeLeft: 60,
-      maxTime: 60,
-      basePayout: 800 + Math.floor(Math.random() * 600)
+      timeLeft: 80,
+      maxTime: 80,
+      basePayout: 1200 + Math.floor(Math.random() * 800)
     };
 
     // First go to Pizzeria to pick up order
@@ -204,22 +228,34 @@ class JobManager {
   nextTaxiFare() {
     const fares = [
       {
-        pickupName: 'Financial Center',
-        pickupPos: new THREE.Vector3(10, 1, -60),
-        dropoffName: 'Luxury Yacht Harbor',
-        dropoffPos: new THREE.Vector3(140, 1, -160)
+        pickupName: 'Downtown Financial Center',
+        pickupPos: new THREE.Vector3(39, 1, -40),
+        dropoffName: 'Vice Beach Marina Club',
+        dropoffPos: new THREE.Vector3(330, 1, -80)
       },
       {
-        pickupName: 'Metro Nightclub',
-        pickupPos: new THREE.Vector3(-60, 1, 80),
-        dropoffName: 'St. Jude Hospital',
+        pickupName: 'Chinatown Neon Plaza',
+        pickupPos: new THREE.Vector3(39, 1, -250),
+        dropoffName: 'St. Jude General Hospital',
         dropoffPos: this.hospitalPos
       },
       {
-        pickupName: 'Maple Suburbs',
-        pickupPos: new THREE.Vector3(130, 1, 140),
-        dropoffName: 'Downtown Citadel',
-        dropoffPos: new THREE.Vector3(10, 1, 10)
+        pickupName: 'Maple Valley Estates',
+        pickupPos: new THREE.Vector3(260, 1, 280),
+        dropoffName: 'Downtown Citadel Skyscraper',
+        dropoffPos: new THREE.Vector3(39, 1, 10)
+      },
+      {
+        pickupName: 'Industrial Port Gate 4',
+        pickupPos: new THREE.Vector3(-250, 1, -240),
+        dropoffName: 'Vice Coast Luxury Strip',
+        dropoffPos: new THREE.Vector3(320, 1, 40)
+      },
+      {
+        pickupName: 'Badlands Desert Truck Stop',
+        pickupPos: new THREE.Vector3(-270, 1, 270),
+        dropoffName: 'Downtown Central Station',
+        dropoffPos: new THREE.Vector3(39, 1, 80)
       }
     ];
     const pick = fares[Math.floor(Math.random() * fares.length)];
@@ -232,7 +268,7 @@ class JobManager {
       dropoffName: pick.dropoffName,
       pickupPos: pick.pickupPos,
       dropoffPos: pick.dropoffPos,
-      fare: 1200 + Math.floor(Math.random() * 1000)
+      fare: 1800 + Math.floor(Math.random() * 1200)
     };
 
     this.setBeacon(pick.pickupPos, 0xf1c40f);

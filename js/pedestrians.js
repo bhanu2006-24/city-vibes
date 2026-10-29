@@ -257,9 +257,14 @@ class PedestrianManager {
       target.mesh.reticle.visible = false;
     }
 
+    // Drop fat cash bundle from target!
+    if (window.game && window.game.economy) {
+      window.game.economy.spawnCashPickup(target.mesh.position, 800);
+    }
+
     if (window.gameUI) {
       window.gameUI.showNotification(
-        `🎯 TARGET DOWN: ${target.name}! Open Camera (C), take a photo of the body to claim $${target.bounty.toLocaleString()}!`,
+        `🎯 TARGET DOWN: ${target.name}! Dropped $800 cash. Open Camera (C) and snap photo of the body to claim $${target.bounty.toLocaleString()} bounty!`,
         'target_kill',
         7000
       );

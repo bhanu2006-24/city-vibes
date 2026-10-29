@@ -367,6 +367,40 @@ class Player {
         }
       }
     }
+
+    // Check ambient pedestrians
+    const pedMeshes = this.pedestrianManager.pedestrians.map(p => p.mesh);
+    const pedHits = raycaster.intersectObjects(pedMeshes, true);
+    if (pedHits.length > 0) {
+      const hitObj = pedHits[0].object;
+      for (let i = 0; i < this.pedestrianManager.pedestrians.length; i++) {
+        const ped = this.pedestrianManager.pedestrians[i];
+        if (ped.isDead) continue;
+
+        let found = false;
+        ped.mesh.traverse(child => {
+          if (child === hitObj) found = true;
+        });
+
+        if (found) {
+          ped.isDead = true;
+          ped.mesh.rotation.x = Math.PI / 2;
+          ped.mesh.position.y = 0.25;
+
+          // Drop money stack!
+          const droppedCash = Math.floor(100 + Math.random() * 250);
+          if (this.world && window.game.economy) {
+            window.game.economy.spawnCashPickup(ped.mesh.position, droppedCash);
+          }
+
+          this.addPoliceHeat(1);
+          if (window.gameUI) {
+            window.gameUI.showNotification(`💥 Civilian down! Dropped +$${droppedCash} cash! Police heat rising.`, 'error', 4000);
+          }
+          return;
+        }
+      }
+    }
   }
 
   // ------------------------------------------------------------
