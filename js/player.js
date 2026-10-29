@@ -679,6 +679,11 @@ class Player {
       this.fpsWeaponGroup.visible = false;
       const v = this.vehicleManager.activeVehicle;
 
+      // Synchronize player position with vehicle so minimap, jobs & streaming update in real-time
+      this.position.copy(v.group.position);
+      this.meshGroup.position.copy(v.group.position);
+      this.heading = v.group.rotation.y;
+
       const forward = new THREE.Vector3(Math.sin(v.group.rotation.y), 0, Math.cos(v.group.rotation.y));
       const camTargetPos = v.group.position.clone().sub(forward.multiplyScalar(7.2)).add(new THREE.Vector3(0, 3.6, 0));
 

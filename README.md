@@ -32,13 +32,31 @@ A complete 3D open-world city simulation game built with **Vanilla JavaScript, H
 - **Carjacking Mechanics**: The ambient driver is pulled out onto the pavement, screams, drops their wallet with **$150 - $400 cash**, and runs away!
 - **Instant Full Driving Physics**: Commandeered traffic cars immediately inherit full steering, acceleration, drifting, nitro boost (`Shift`), horn (`H`), and radio stations (`R`). Alerts police with ⭐ 1-Star heat for Grand Theft Auto.
 
-### 3. 🚨 Police Pursuits, Combat & The BUSTED System
-- **Police Combat AI**: Police cruisers pursue wanted players, ram vehicles, and dispatch armed officers who fire tasers and sidearms.
-- **Capture at 10% HP**:
-  - When pursued by police and your health drops down to `<= 10%`, the cops pin you and trigger the official **BUSTED!** sequence!
-  - Handcuffs latching audio plays (`*click-click*`), sirens blare, radio dispatch confirms suspect in custody.
-  - Full-screen dark red cinematic **BUSTED** screen displays confiscated illegal firearms, medical/bail fine deduction ($1,200), and clears police heat.
+### 3. 🚨 Realistic Police Pursuits, Foot Chases & The BUSTED System
+- **No Unfair Auto-Aim**: Police cruisers pursue and pull up alongside suspects. Armed police officers in uniform and peaked caps step out on foot to apprehend suspects.
+- **Visible Bullet Tracers & Spread**: Officers fire sidearms with realistic human spread and dodgeable bullet tracers. Players can dive into alleyways or duck behind cars for cover!
+- **Physical Melee Cornering & BUSTED Sequence**:
+  - Police cannot magically bust players from inside cars across the street. Cops must pursue on foot and physically corner the player (`dist <= 2.5m`) when player HP drops to `<= 10%`.
+  - Handcuffs latching audio plays (`*click-click*`), sirens blare, and the cinematic dark red **BUSTED** screen displays confiscated weapons, medical/bail fees (-$1,200), and clears police heat.
   - Player respawns outside Central Police Precinct / Hospital ER with 100% health restored and civilian cover intact!
+
+### 4. 🛣️ Trans-Archipelago Expressways & Overhead Direction Gantries
+- **Interconnected Road Network**: Flat, seamless 4-lane asphalt highways connecting Downtown Metropolis directly with Vice Beach, Liberty Port, Red Rock Badlands, Alpine Pines, etc.
+- **Overhead Direction Signboards**: Highway gantries feature green reflective road signs with distance markers, arrows, and speed limits (`⬆ VICE BEACH 3.2 KM • MAX 150 MPH`).
+- **Highway Shoulders & Guardrails**: Steel side barriers and double yellow lane dividers prevent vehicular drift into deep ditches.
+
+### 5. 🏢 Physical Real Estate Purchases & Apex Construction Co.
+- **No Online Instant Purchases**: Real estate cannot be bought directly over the phone. Players use the phone's GPS to navigate to physical properties across the cities and sign title deeds on-site at interactive beacons.
+- **Apex Construction Co. Landmark**: Renovations cannot be done via smartphone. Visit the physical **Apex Construction Co.** headquarters (`-117, 39`) to contract structural upgrades that boost passive rental yields!
+
+### 6. 🏦 First National Bank & Physical ATM Kiosks
+- **Physical Currency Banking**: Smartphone banking only displays account statements; cash deposits and withdrawals must be made in person at **First National Bank** or local street ATM kiosks.
+- **Full ATM Interface**: Quick buttons for $500, $2,000, $10,000, Deposit All Cash, and Withdraw All Bank funds.
+
+### 7. 🧭 Dynamic Minimap & Off-Screen Waypoint Chevrons
+- **Dynamic Scrolling Road Grid**: The minimap scrolls dynamically centered on player position, ensuring road networks are visible everywhere across the entire 30,000 × 30,000 world.
+- **Off-Screen Navigation Chevrons**: When paramedic patients, cab passengers, delivery drop-offs, or GPS waypoints are beyond the radar edge, a pulsing chevron indicator on the minimap's perimeter points directly toward the objective with a real-time distance readout (e.g. `🚑 Patient 420m`).
+- **Tactical Full Map (`M` Key)**: Click the minimap or press `[M]` to expand the radar into a 30,000 × 30,000 full-state map showing all 8 cities, expressways, and taxi dispatch pins.
 
 ### 4. 🛒 Enterable Building Interiors, Shopping & Store Robberies
 - **24/7 SuperMart & Convenience Stores**:

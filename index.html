@@ -233,6 +233,60 @@
     </div>
   </div>
 
+  <!-- First National Bank & ATM Kiosk Modal -->
+  <div id="bank-atm-modal" class="game-modal">
+    <div class="modal-header">
+      <h2>🏦 First National Bank & ATM Kiosk</h2>
+      <button class="modal-close-btn">&times;</button>
+    </div>
+    <div class="modal-body" style="display:block;">
+      <div class="atm-screen-container">
+        <div class="atm-balance-display">
+          <div class="atm-stat">
+            <span class="atm-label">💵 WALLET CASH</span>
+            <span id="atm-cash-val" class="atm-val text-cash">$0</span>
+          </div>
+          <div class="atm-stat">
+            <span class="atm-label">💳 BANK ACCOUNT</span>
+            <span id="atm-bank-val" class="atm-val text-bank">$0</span>
+          </div>
+        </div>
+
+        <div class="atm-actions-grid">
+          <div class="atm-column">
+            <h4 style="color: #2ecc71; margin-bottom: 12px; font-size: 14px;">⬇️ CASH DEPOSIT</h4>
+            <div class="atm-btn-group">
+              <button class="btn btn-success atm-btn" onclick="window.game.economy.depositCashAtATM(500)">Deposit $500</button>
+              <button class="btn btn-success atm-btn" onclick="window.game.economy.depositCashAtATM(2000)">Deposit $2,000</button>
+              <button class="btn btn-success atm-btn" onclick="window.game.economy.depositCashAtATM(10000)">Deposit $10,000</button>
+              <button class="btn btn-outline-success atm-btn" onclick="window.game.economy.depositCashAtATM('all')">Deposit ALL Cash</button>
+            </div>
+          </div>
+          <div class="atm-column">
+            <h4 style="color: #00f0ff; margin-bottom: 12px; font-size: 14px;">⬆️ CASH WITHDRAWAL</h4>
+            <div class="atm-btn-group">
+              <button class="btn btn-primary atm-btn" onclick="window.game.economy.withdrawCashAtATM(500)">Withdraw $500</button>
+              <button class="btn btn-primary atm-btn" onclick="window.game.economy.withdrawCashAtATM(2000)">Withdraw $2,000</button>
+              <button class="btn btn-primary atm-btn" onclick="window.game.economy.withdrawCashAtATM(10000)">Withdraw $10,000</button>
+              <button class="btn btn-outline-primary atm-btn" onclick="window.game.economy.withdrawCashAtATM('all')">Withdraw ALL Bank</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Apex Construction Co. & Renovation Office Modal -->
+  <div id="construction-modal" class="game-modal">
+    <div class="modal-header">
+      <h2>🏗️ Apex Construction Co. (Real Estate Renovations)</h2>
+      <button class="modal-close-btn">&times;</button>
+    </div>
+    <div id="construction-properties-list" class="modal-body">
+      <!-- Rendered dynamically by GameUI -->
+    </div>
+  </div>
+
   <!-- City Arrival Welcome Banner -->
   <div id="city-welcome-card">
     <div id="city-welcome-name">🏙️ DOWNTOWN METROPOLIS</div>

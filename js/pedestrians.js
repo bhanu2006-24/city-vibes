@@ -10,6 +10,7 @@ class PedestrianManager {
     this.trafficCars = [];
     this.targets = [];
     this.policeCruiser = null;
+    this.policeOfficer = null;
     this.policeSirenTimer = 0;
     this.brandishAlertTimer = 0;
     this.copAttackTimer = 0;
@@ -328,6 +329,115 @@ class PedestrianManager {
   }
 
   // ------------------------------------------------------------
+  // ARMED POLICE OFFICER (ON FOOT PURSUIT & SHOOTING)
+  // ------------------------------------------------------------
+
+  spawnPoliceOfficer(nearPos) {
+    if (this.policeOfficer) return;
+
+    const group = new THREE.Group();
+    group.position.copy(nearPos).add(new THREE.Vector3(2.5, 0, 2.5));
+
+    // Police officer in dark blue uniform
+    const torso = new THREE.Mesh(
+      new THREE.BoxGeometry(0.7, 0.9, 0.4),
+      new THREE.MeshLambertMaterial({ color: 0x1b263b })
+    );
+    torso.position.y = 1.25;
+    group.add(torso);
+
+    // Police gold badge
+    const badge = new THREE.Mesh(
+      new THREE.BoxGeometry(0.12, 0.15, 0.05),
+      new THREE.MeshBasicMaterial({ color: 0xf1c40f })
+    );
+    badge.position.set(0.18, 1.45, 0.22);
+    group.add(badge);
+
+    // Head
+    const head = new THREE.Mesh(
+      new THREE.BoxGeometry(0.4, 0.4, 0.4),
+      new THREE.MeshLambertMaterial({ color: 0xf5d0b5 })
+    );
+    head.position.y = 1.95;
+    group.add(head);
+
+    // Police peaked cap
+    const cap = new THREE.Mesh(
+      new THREE.BoxGeometry(0.46, 0.16, 0.5),
+      new THREE.MeshLambertMaterial({ color: 0x0d1b2a })
+    );
+    cap.position.set(0, 2.18, 0.03);
+    group.add(cap);
+
+    // Legs
+    const legGeo = new THREE.BoxGeometry(0.28, 0.8, 0.3);
+    const legMat = new THREE.MeshLambertMaterial({ color: 0x111625 });
+    const legL = new THREE.Mesh(legGeo, legMat);
+    legL.position.set(-0.18, 0.4, 0);
+    group.add(legL);
+
+    const legR = new THREE.Mesh(legGeo, legMat);
+    legR.position.set(0.18, 0.4, 0);
+    group.add(legR);
+
+    // Arms & Drawn Service Weapon
+    const armGeo = new THREE.BoxGeometry(0.22, 0.7, 0.22);
+    const armL = new THREE.Mesh(armGeo, new THREE.MeshLambertMaterial({ color: 0x1b263b }));
+    armL.position.set(-0.46, 1.2, 0);
+    group.add(armL);
+
+    const armR = new THREE.Mesh(armGeo, new THREE.MeshLambertMaterial({ color: 0x1b263b }));
+    armR.position.set(0.46, 1.2, 0.2);
+    armR.rotation.x = -Math.PI / 2.5;
+    group.add(armR);
+
+    const gun = new THREE.Mesh(
+      new THREE.BoxGeometry(0.1, 0.14, 0.35),
+      new THREE.MeshBasicMaterial({ color: 0x222222 })
+    );
+    gun.position.set(0.46, 1.35, 0.55);
+    group.add(gun);
+
+    this.scene.add(group);
+
+    this.policeOfficer = {
+      group: group,
+      speed: 8.5,
+      legL: legL,
+      legR: legR,
+      armL: armL,
+      armR: armR,
+      gun: gun,
+      animTime: 0,
+      shootTimer: 0,
+      pinTimer: 0
+    };
+  }
+
+  removePoliceOfficer() {
+    if (!this.policeOfficer) return;
+    this.scene.remove(this.policeOfficer.group);
+    this.policeOfficer = null;
+  }
+
+  spawnBulletTracer(from, to, didHit) {
+    const dist = from.distanceTo(to);
+    const geo = new THREE.CylinderGeometry(0.04, 0.04, Math.max(1, dist), 4);
+    const mat = new THREE.MeshBasicMaterial({ color: 0xffea00, transparent: true, opacity: 0.85 });
+    const tracer = new THREE.Mesh(geo, mat);
+
+    const mid = from.clone().add(to).multiplyScalar(0.5);
+    tracer.position.copy(mid);
+    tracer.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), to.clone().sub(from).normalize());
+    this.scene.add(tracer);
+
+    setTimeout(() => {
+      this.scene.remove(tracer);
+    }, 120);
+  }
+
+  // ------------------------------------------------------------
   // AMBIENT TRAFFIC
   // ------------------------------------------------------------
 
@@ -462,45 +572,53 @@ class PedestrianManager {
       }
     }
 
-    // 3. Police Pursuit AI
+    // 3. Police Pursuit AI (Realistic Chase & Armed Officers On Foot)
     if (window.game && window.game.player.wantedStars >= 1) {
+      const player = window.game.player;
+      const isDriving = !!(window.game.vehicleManager && window.game.vehicleManager.activeVehicle);
+      const playerPos = player.position;
+
+      // Spawn police cruiser if not present
       if (!this.policeCruiser) {
-        this.spawnPoliceCruiser(window.game.player.position);
-      } else {
-        // Police cruiser pursues player
-        const playerPos = window.game.player.position;
+        this.spawnPoliceCruiser(playerPos);
+      }
+
+      // Vehicular Chase Behavior
+      if (this.policeCruiser) {
         const diff = playerPos.clone().sub(this.policeCruiser.group.position);
         diff.y = 0;
         const dist = diff.length();
 
-        if (dist > 3.0) {
-          diff.normalize();
-          this.policeCruiser.group.position.addScaledVector(diff, this.policeCruiser.speed * delta);
-          this.policeCruiser.group.rotation.y = Math.atan2(diff.x, diff.z);
-        }
-
-        // Cops Attack & Subdue (Shoot / Taser / PIT maneuver)
-        if (dist < 15.0) {
-          this.copAttackTimer += delta;
-          if (this.copAttackTimer > 1.25) {
-            this.copAttackTimer = 0;
-            const player = window.game.player;
-            if (player && !player.isBusted) {
-              if (window.soundManager) window.soundManager.playGunshot(false);
-              player.takeDamage(15, 'police');
-
-              if (window.gameUI) {
-                window.gameUI.showNotification('⚡ POLICE: "Suspect is resisting! Taser deployed! Drop to the ground!"', 'error', 3000);
-              }
-            }
+        if (isDriving) {
+          // Player is driving -> Cruiser pursues vehicle
+          if (dist > 5.0) {
+            diff.normalize();
+            this.policeCruiser.group.position.addScaledVector(diff, this.policeCruiser.speed * delta);
+            this.policeCruiser.group.rotation.y = Math.atan2(diff.x, diff.z);
+          } else {
+            // Ram player car!
+            const v = window.game.vehicleManager.activeVehicle;
+            v.speed *= 0.88;
+            v.condition = Math.max(10, (v.condition || 100) - 5 * delta);
           }
-        }
 
-        // Ramming player vehicle
-        if (dist < 4.0 && window.game && window.game.vehicleManager && window.game.vehicleManager.activeVehicle) {
-          const v = window.game.vehicleManager.activeVehicle;
-          v.speed *= 0.6;
-          v.condition = Math.max(10, (v.condition || 100) - 8);
+          // If cop on foot was out, put him away while driving
+          if (this.policeOfficer) {
+            this.removePoliceOfficer();
+          }
+        } else {
+          // Player is on foot!
+          // Cruiser stops nearby
+          if (dist > 18.0) {
+            diff.normalize();
+            this.policeCruiser.group.position.addScaledVector(diff, this.policeCruiser.speed * delta);
+            this.policeCruiser.group.rotation.y = Math.atan2(diff.x, diff.z);
+          }
+
+          // Armed Police Officer exits cruiser and pursues on foot!
+          if (!this.policeOfficer) {
+            this.spawnPoliceOfficer(this.policeCruiser.group.position);
+          }
         }
 
         // Flashing police strobe
@@ -509,10 +627,75 @@ class PedestrianManager {
         this.policeCruiser.redLight.material.color.setHex(flash ? 0xff0022 : 0x220000);
         this.policeCruiser.blueLight.material.color.setHex(!flash ? 0x0066ff : 0x000033);
       }
-    } else {
-      if (this.policeCruiser) {
-        this.removePoliceCruiser();
+
+      // Armed Police Officer On Foot Pursuit & Aimed Shooting (NO AUTO-AIM!)
+      if (this.policeOfficer && !isDriving) {
+        const cop = this.policeOfficer;
+        const diff = playerPos.clone().sub(cop.group.position);
+        diff.y = 0;
+        const dist = diff.length();
+
+        // Run towards player
+        if (dist > 2.2) {
+          diff.normalize();
+          cop.group.position.addScaledVector(diff, cop.speed * delta);
+          cop.group.rotation.y = Math.atan2(diff.x, diff.z);
+
+          // Running animation
+          cop.animTime += delta * 12;
+          const legAngle = Math.sin(cop.animTime) * 0.6;
+          cop.legL.rotation.x = legAngle;
+          cop.legR.rotation.x = -legAngle;
+          cop.armL.rotation.x = -legAngle * 0.7;
+        }
+
+        // Aim & Shoot at player (Visible bullet with spread - NO AUTO-AIM!)
+        cop.shootTimer += delta;
+        if (cop.shootTimer > 1.6 && dist < 38.0 && dist > 3.0) {
+          cop.shootTimer = 0;
+          if (window.soundManager) window.soundManager.playGunshot(false);
+
+          const fromPos = cop.group.position.clone().add(new THREE.Vector3(0, 1.4, 0));
+          const targetPos = playerPos.clone().add(new THREE.Vector3(0, 1.2, 0));
+
+          // Spread based on player movement & distance (45% hit chance)
+          const isPlayerMoving = window.game.input && (window.game.input.forward || window.game.input.sprint);
+          const hitChance = isPlayerMoving ? 0.35 : 0.55;
+          const didHit = Math.random() < hitChance;
+
+          if (!didHit) {
+            targetPos.x += (Math.random() - 0.5) * 3.5;
+            targetPos.z += (Math.random() - 0.5) * 3.5;
+          }
+
+          this.spawnBulletTracer(fromPos, targetPos, didHit);
+
+          if (didHit && !player.isBusted) {
+            player.takeDamage(12, 'police');
+          } else {
+            if (window.gameUI && Math.random() < 0.4) {
+              window.gameUI.showNotification('👮 POLICE: "Stop right there! Drop your weapon!"', 'warning', 2500);
+            }
+          }
+        }
+
+        // Close-range physical arrest (ONLY when cornered at < 2.5m and health <= 10 or player pinned)
+        if (dist <= 2.5 && !player.isBusted) {
+          if (player.health <= 10) {
+            window.game.triggerBustedSequence();
+          } else {
+            cop.pinTimer += delta;
+            if (cop.pinTimer > 2.0 && player.isConcealed) {
+              window.game.triggerBustedSequence();
+            }
+          }
+        } else {
+          cop.pinTimer = 0;
+        }
       }
+    } else {
+      if (this.policeCruiser) this.removePoliceCruiser();
+      if (this.policeOfficer) this.removePoliceOfficer();
     }
 
     // 4. Traffic Cars

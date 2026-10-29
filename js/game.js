@@ -385,6 +385,12 @@ class CityGame {
         this.ui.openSuperMartModal();
       } else if (nearSpot.action === 'open_bank') {
         this.economy.robBankVault();
+      } else if (nearSpot.action === 'open_bank_atm') {
+        this.ui.openBankATMModal();
+      } else if (nearSpot.action === 'open_construction') {
+        this.ui.openConstructionModal();
+      } else if (nearSpot.action === 'buy_property_onsite') {
+        this.economy.buyPropertyOnSite(nearSpot.propertyId);
       } else if (nearSpot.action === 'interact_property') {
         this.ui.openPhoneApp('realestate');
         if (!this.ui.isPhoneOpen) this.ui.togglePhone();
@@ -530,6 +536,23 @@ class CityGame {
       }
       if (nearSpot.action === 'open_bank') {
         this.ui.showInteractionPrompt(`[E] or [F] Crack Bank Vault Heist`);
+        return;
+      }
+      if (nearSpot.action === 'open_bank_atm') {
+        this.ui.showInteractionPrompt(`[E] Use First National ATM / Teller`);
+        return;
+      }
+      if (nearSpot.action === 'open_construction') {
+        this.ui.showInteractionPrompt(`[E] Enter Apex Construction Co. (Property Renovations)`);
+        return;
+      }
+      if (nearSpot.action === 'buy_property_onsite') {
+        const prop = this.economy.properties[nearSpot.propertyId];
+        if (prop && prop.owned) {
+          this.ui.showInteractionPrompt(`🏢 ${prop.name} (OWNED - Lv. ${prop.level})`);
+        } else {
+          this.ui.showInteractionPrompt(`[E] Purchase Deed: ${nearSpot.name}`);
+        }
         return;
       }
       this.ui.showInteractionPrompt(`[E] Enter ${nearSpot.name}`);

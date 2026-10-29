@@ -22,7 +22,9 @@ class EconomyManager {
         owned: false,
         isRented: false,
         level: 1,
-        renovationCost: 1500
+        renovationCost: 1500,
+        locationName: 'Downtown Metropolis South',
+        position: new THREE.Vector3(-39, 1, 140)
       },
       suburban_villa: {
         id: 'suburban_villa',
@@ -34,7 +36,9 @@ class EconomyManager {
         owned: false,
         isRented: false,
         level: 1,
-        renovationCost: 8000
+        renovationCost: 8000,
+        locationName: 'Maple Valley Suburbs',
+        position: new THREE.Vector3(3200, 1, 3350)
       },
       downtown_loft: {
         id: 'downtown_loft',
@@ -46,7 +50,9 @@ class EconomyManager {
         owned: false,
         isRented: false,
         level: 1,
-        renovationCost: 18000
+        renovationCost: 18000,
+        locationName: 'Downtown Metropolis East',
+        position: new THREE.Vector3(117, 1, -117)
       },
       docks_warehouse: {
         id: 'docks_warehouse',
@@ -58,7 +64,9 @@ class EconomyManager {
         owned: false,
         isRented: false,
         level: 1,
-        renovationCost: 30000
+        renovationCost: 30000,
+        locationName: 'Liberty Industrial Port',
+        position: new THREE.Vector3(-3200, 1, -3150)
       },
       penthouse: {
         id: 'penthouse',
@@ -70,7 +78,9 @@ class EconomyManager {
         owned: false,
         isRented: false,
         level: 1,
-        renovationCost: 50000
+        renovationCost: 50000,
+        locationName: 'Citadel 138m Tower',
+        position: new THREE.Vector3(39, 140, 47)
       },
       ocean_mansion: {
         id: 'ocean_mansion',
@@ -82,7 +92,9 @@ class EconomyManager {
         owned: false,
         isRented: false,
         level: 1,
-        renovationCost: 90000
+        renovationCost: 90000,
+        locationName: 'Vice Beach Oceanfront',
+        position: new THREE.Vector3(3400, 1, 450)
       }
     };
 
@@ -250,10 +262,72 @@ class EconomyManager {
   }
 
   // ------------------------------------------------------------
-  // REAL ESTATE BUYING & RENTING
+  // REAL ESTATE BUYING (ON-SITE & GPS NAVIGATION)
   // ------------------------------------------------------------
 
+  locatePropertyOnMap(propertyId) {
+    const prop = this.properties[propertyId];
+    if (!prop) return;
+
+    if (this.game.jobs) {
+      this.game.jobs.setBeacon(prop.position, 0x2ecc71);
+    }
+
+    if (window.soundManager) window.soundManager.playNotification(true);
+    if (this.game.ui.isPhoneOpen) this.game.ui.togglePhone();
+
+    this.game.ui.showNotification(
+      `📍 GPS Route Set to ${prop.name} (${prop.locationName})! Follow the green sky beacon to purchase on-site ($${prop.price.toLocaleString()}).`,
+      'info',
+      7000
+    );
+  }
+
+  locateConstructionCompany() {
+    const pos = new THREE.Vector3(-117, 1.0, 39);
+    if (this.game.jobs) {
+      this.game.jobs.setBeacon(pos, 0x00cec9);
+    }
+    if (window.soundManager) window.soundManager.playNotification(true);
+    if (this.game.ui.isPhoneOpen) this.game.ui.togglePhone();
+    this.game.ui.showNotification(
+      '📍 GPS Route Set to Apex Construction Co. (Downtown Metropolis)! Follow cyan sky beacon to hire renovation contractors.',
+      'info',
+      7000
+    );
+  }
+
+  locateBank() {
+    const pos = new THREE.Vector3(12, 1.0, -18);
+    if (this.game.jobs) {
+      this.game.jobs.setBeacon(pos, 0x0984e3);
+    }
+    if (window.soundManager) window.soundManager.playNotification(true);
+    if (this.game.ui.isPhoneOpen) this.game.ui.togglePhone();
+    this.game.ui.showNotification(
+      '📍 GPS Route Set to First National Bank & ATM! Follow blue sky beacon to deposit or withdraw cash.',
+      'info',
+      7000
+    );
+  }
+
+  updateBalanceUI() {
+    if (this.game && this.game.ui) {
+      this.game.ui.updateBalance(this.cash, this.bank);
+    } else if (window.gameUI) {
+      window.gameUI.updateBalance(this.cash, this.bank);
+    }
+    const cashVal = document.getElementById('atm-cash-val');
+    const bankVal = document.getElementById('atm-bank-val');
+    if (cashVal) cashVal.innerText = `$${this.cash.toLocaleString()}`;
+    if (bankVal) bankVal.innerText = `$${this.bank.toLocaleString()}`;
+  }
+
   buyProperty(propertyId) {
+    return this.buyPropertyOnSite(propertyId);
+  }
+
+  buyPropertyOnSite(propertyId) {
     const prop = this.properties[propertyId];
     if (!prop) return false;
     if (prop.owned) {
@@ -269,7 +343,7 @@ class EconomyManager {
 
       if (window.gameUI) {
         window.gameUI.showNotification(
-          `🏢 CONGRATULATIONS! You bought ${prop.name}! Now earning $${prop.rentIncome}/cycle in rent!`,
+          `🏢 DEED SIGNED ON-SITE! You purchased ${prop.name}! Earning +$${prop.rentIncome.toLocaleString()}/cycle rent!`,
           'property',
           7000
         );
@@ -279,10 +353,71 @@ class EconomyManager {
     } else {
       window.soundManager.playNotification(false);
       if (window.gameUI) {
-        window.gameUI.showNotification(`❌ Insufficient cash! Need $${prop.price.toLocaleString()}`, 'error');
+        window.gameUI.showNotification(`❌ Insufficient cash to purchase deed! Need $${prop.price.toLocaleString()}`, 'error');
       }
       return false;
     }
+  }
+
+  renovatePropertyAtCompany(propertyId) {
+    const prop = this.properties[propertyId];
+    if (!prop || !prop.owned) return false;
+
+    if (this.spendCash(prop.renovationCost)) {
+      prop.level += 1;
+      prop.rentIncome = Math.round(prop.rentIncome * 1.55);
+      prop.renovationCost = Math.round(prop.renovationCost * 1.8);
+      window.soundManager.playCash();
+      window.soundManager.playMissionSuccess();
+
+      if (window.gameUI) {
+        window.gameUI.showNotification(
+          `🔨 RENOVATION COMPLETE! ${prop.name} upgraded to Level ${prop.level}! New rent yield: +$${prop.rentIncome.toLocaleString()}/cycle!`,
+          'property',
+          7000
+        );
+      }
+      this.saveState();
+      return true;
+    } else {
+      window.soundManager.playNotification(false);
+      if (window.gameUI) {
+        window.gameUI.showNotification(`❌ Insufficient cash for renovation contract! Need $${prop.renovationCost.toLocaleString()}`, 'error');
+      }
+      return false;
+    }
+  }
+
+  depositCashAtATM(amount) {
+    if (amount === 'all') amount = this.cash;
+    amount = Math.min(this.cash, Math.max(0, parseInt(amount) || 0));
+    if (amount <= 0) {
+      this.game.ui.showNotification('❌ No cash in wallet to deposit!', 'warning');
+      return;
+    }
+
+    this.cash -= amount;
+    this.bank += amount;
+    this.updateBalanceUI();
+    if (window.soundManager) window.soundManager.playCash();
+    this.game.ui.showNotification(`🏦 ATM Deposit Successful: +$${amount.toLocaleString()} deposited into bank account.`, 'success');
+    this.saveState();
+  }
+
+  withdrawCashAtATM(amount) {
+    if (amount === 'all') amount = this.bank;
+    amount = Math.min(this.bank, Math.max(0, parseInt(amount) || 0));
+    if (amount <= 0) {
+      this.game.ui.showNotification('❌ Insufficient funds in bank account!', 'warning');
+      return;
+    }
+
+    this.bank -= amount;
+    this.cash += amount;
+    this.updateBalanceUI();
+    if (window.soundManager) window.soundManager.playCash();
+    this.game.ui.showNotification(`💵 ATM Withdrawal Successful: -$${amount.toLocaleString()} withdrawn from bank into wallet.`, 'success');
+    this.saveState();
   }
 
   togglePropertyRent(propertyId) {

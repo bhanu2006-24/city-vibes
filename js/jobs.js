@@ -121,24 +121,26 @@ class JobManager {
     this.beaconRing.position.y = 0.2;
     this.beaconGroup.add(this.beaconRing);
 
-    // Vertical Light Column
-    const beamGeo = new THREE.CylinderGeometry(0.5, 1.2, 18, 16, 1, true);
+    // Vertical Light Column (Shoots 80m into the sky for easy visibility)
+    const beamGeo = new THREE.CylinderGeometry(0.8, 2.4, 80, 16, 1, true);
     const beamMat = new THREE.MeshBasicMaterial({
       color: 0x00ff88,
       side: THREE.DoubleSide,
       transparent: true,
-      opacity: 0.4
+      opacity: 0.65
     });
     this.beaconBeam = new THREE.Mesh(beamGeo, beamMat);
-    this.beaconBeam.position.y = 9;
+    this.beaconBeam.position.y = 40;
     this.beaconGroup.add(this.beaconBeam);
   }
 
   setBeacon(position, colorHex = 0x00ff88) {
     if (!position) {
       this.beaconGroup.visible = false;
+      this.beaconPos = null;
       return;
     }
+    this.beaconPos = position.clone();
     this.beaconGroup.position.copy(position);
     this.beaconRing.material.color.setHex(colorHex);
     this.beaconBeam.material.color.setHex(colorHex);

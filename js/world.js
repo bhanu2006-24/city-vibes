@@ -183,37 +183,155 @@ class CityWorld {
   // ------------------------------------------------------------
 
   createTransArchipelagoHighways() {
-    const highwayMat = new THREE.MeshLambertMaterial({ color: 0x1c1e21 });
-    const yellowStripe = new THREE.MeshBasicMaterial({ color: 0xe8b82a });
+    const highwayMat = new THREE.MeshLambertMaterial({ color: 0x1f2328 });
+    const yellowStripe = new THREE.MeshBasicMaterial({ color: 0xf1c40f });
+    const whiteLine = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const guardrailMat = new THREE.MeshLambertMaterial({ color: 0x64748b });
     const metro = this.cities.metropolis.center;
 
-    // Connect Downtown Metropolis to all 7 outer cities with broad 4-lane expressways
-    const outerCities = ['vice_beach', 'liberty_port', 'maple_suburbs', 'badlands', 'chinatown', 'las_palmas', 'alpine_pines'];
+    const outerCities = [
+      { key: 'vice_beach', name: 'Vice Beach & Marina' },
+      { key: 'liberty_port', name: 'Liberty Port & Docks' },
+      { key: 'maple_suburbs', name: 'Maple Valley Suburbs' },
+      { key: 'badlands', name: 'Red Rock Badlands' },
+      { key: 'chinatown', name: 'Neo-Chinatown District' },
+      { key: 'las_palmas', name: 'Las Palmas Casino Strip' },
+      { key: 'alpine_pines', name: 'Alpine Pines Peak' }
+    ];
 
-    outerCities.forEach(cityKey => {
+    outerCities.forEach(cityInfo => {
+      const cityKey = cityInfo.key;
       const target = this.cities[cityKey].center;
       const dir = target.clone().sub(metro);
       const dist = dir.length();
       const mid = metro.clone().add(dir.clone().multiplyScalar(0.5));
       const angle = Math.atan2(dir.x, dir.z);
 
-      // Highway surface (24m wide)
-      const roadGeo = new THREE.PlaneGeometry(24, dist);
+      // Using group rotation to ensure 100% horizontal flat alignment (no Euler XYZ gimbal lock!)
+      const hGroup = new THREE.Group();
+      hGroup.position.set(mid.x, 0.04, mid.z);
+      hGroup.rotation.y = angle;
+
+      // 1. Broad 4-lane paved asphalt expressway (26m wide)
+      const roadGeo = new THREE.PlaneGeometry(26, dist);
       const road = new THREE.Mesh(roadGeo, highwayMat);
       road.rotation.x = -Math.PI / 2;
-      road.rotation.z = -angle;
-      road.position.set(mid.x, 0.02, mid.z);
       road.receiveShadow = true;
-      this.scene.add(road);
+      hGroup.add(road);
 
-      // Double yellow center median line
-      const stripeGeo = new THREE.PlaneGeometry(0.5, dist);
+      // 2. Double yellow center divider
+      const stripeGeo = new THREE.PlaneGeometry(0.6, dist);
       const stripe = new THREE.Mesh(stripeGeo, yellowStripe);
       stripe.rotation.x = -Math.PI / 2;
-      stripe.rotation.z = -angle;
-      stripe.position.set(mid.x, 0.03, mid.z);
-      this.scene.add(stripe);
+      stripe.position.y = 0.01;
+      hGroup.add(stripe);
+
+      // 3. White outer shoulder lines
+      [-11.5, 11.5].forEach(sx => {
+        const whiteShoulder = new THREE.Mesh(new THREE.PlaneGeometry(0.35, dist), whiteLine);
+        whiteShoulder.rotation.x = -Math.PI / 2;
+        whiteShoulder.position.set(sx, 0.01, 0);
+        hGroup.add(whiteShoulder);
+      });
+
+      // 4. Steel Guardrails along highway edges
+      [-13.1, 13.1].forEach(gx => {
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.9, dist), guardrailMat);
+        rail.position.set(gx, 0.45, 0);
+        hGroup.add(rail);
+      });
+
+      // 5. Overhead Highway Direction Signboards
+      const distKm = (dist / 1000).toFixed(1);
+      const gantryPositions = [-dist * 0.36, 0, dist * 0.36];
+      gantryPositions.forEach(gz => {
+        this.createOverheadDirectionGantry(hGroup, gz, cityInfo.name, distKm);
+      });
+
+      // 6. Highway Streetlights spaced along route
+      for (let lz = -dist * 0.45; lz <= dist * 0.45; lz += 160) {
+        this.createHighwayStreetlight(hGroup, -13.6, lz);
+        this.createHighwayStreetlight(hGroup, 13.6, lz);
+      }
+
+      this.scene.add(hGroup);
     });
+  }
+
+  createOverheadDirectionGantry(group, zPos, destName, distKm) {
+    const gantry = new THREE.Group();
+    gantry.position.set(0, 0, zPos);
+
+    const pillarMat = new THREE.MeshLambertMaterial({ color: 0x475569 });
+    // Left & Right steel pillars
+    [-13.8, 13.8].forEach(px => {
+      const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.8, 9, 0.8), pillarMat);
+      pillar.position.set(px, 4.5, 0);
+      gantry.add(pillar);
+    });
+
+    // Crossbeam
+    const beam = new THREE.Mesh(new THREE.BoxGeometry(28.5, 1.2, 1.2), pillarMat);
+    beam.position.set(0, 8.5, 0);
+    gantry.add(beam);
+
+    // Large Reflective Green Highway Direction Board
+    const boardMat = new THREE.MeshPhongMaterial({ color: 0x006837, shininess: 80 });
+    const board = new THREE.Mesh(new THREE.BoxGeometry(22, 3.2, 0.4), boardMat);
+    board.position.set(0, 8.5, 0);
+    gantry.add(board);
+
+    // Direction text canvas texture
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#006837';
+    ctx.fillRect(0, 0, 512, 128);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 6;
+    ctx.strokeRect(6, 6, 500, 116);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 32px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(`⬆ ${destName.toUpperCase()}`, 24, 52);
+
+    ctx.fillStyle = '#f1c40f';
+    ctx.font = 'bold 22px monospace';
+    ctx.fillText(`EXPRESSWAY • ${distKm} KM`, 24, 94);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 26px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(`MAX 150 MPH`, 488, 72);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    const textMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(21.5, 3.0),
+      new THREE.MeshBasicMaterial({ map: texture, transparent: true })
+    );
+    textMesh.position.set(0, 8.5, 0.22);
+    gantry.add(textMesh);
+
+    // Reverse side facing opposite traffic
+    const textMeshBack = textMesh.clone();
+    textMeshBack.rotation.y = Math.PI;
+    textMeshBack.position.z = -0.22;
+    gantry.add(textMeshBack);
+
+    group.add(gantry);
+  }
+
+  createHighwayStreetlight(group, x, z) {
+    const poleMat = new THREE.MeshLambertMaterial({ color: 0x64748b });
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.25, 8.5, 8), poleMat);
+    pole.position.set(x, 4.25, z);
+    group.add(pole);
+
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffea00 }));
+    lamp.position.set(x > 0 ? x - 1.2 : x + 1.2, 8.4, z);
+    group.add(lamp);
   }
 
   // ------------------------------------------------------------
@@ -323,6 +441,32 @@ class CityWorld {
     // 10. NEW: First National Bank & Vault at (1, -1)
     this.buildBankBuilding(city, c.x + 117, c.z - 39);
 
+    // 11. Apex Construction & Architecture Co. at (-1, 0)
+    this.buildConstructionCo(city, c.x - 117, c.z + 39);
+
+    // 12. Physical On-Site Real Estate "FOR SALE" Beacons
+    this.addCityInteractiveZone(city, {
+      id: 'prop_motel_studio',
+      type: 'property_sale',
+      name: 'Sunset Motel Studio #4 ($3,500)',
+      desc: 'Purchase property on-site! Earns $250 rent per cycle.',
+      position: new THREE.Vector3(c.x - 39, 0.5, c.z + 140),
+      color: 0x2ecc71,
+      action: 'buy_property_onsite',
+      propertyId: 'motel_studio'
+    });
+
+    this.addCityInteractiveZone(city, {
+      id: 'prop_downtown_loft',
+      type: 'property_sale',
+      name: 'Neo-Tokyo Brick Loft ($55,000)',
+      desc: 'Purchase property on-site! Earns $2,800 rent per cycle.',
+      position: new THREE.Vector3(c.x + 117, 0.5, c.z - 117),
+      color: 0x2ecc71,
+      action: 'buy_property_onsite',
+      propertyId: 'downtown_loft'
+    });
+
     // Surrounding Downtown Skyscraper Towers
     const towerHeights = [85, 110, 95, 130, 75, 100];
     const towerCoords = [
@@ -404,6 +548,18 @@ class CityWorld {
     for (let p = -300; p <= 300; p += 60) {
       this.createPalmTree(g, c.x + 120, c.z + p);
     }
+
+    // On-Site Property Purchase Beacon
+    this.addCityInteractiveZone(city, {
+      id: 'prop_ocean_mansion',
+      type: 'property_sale',
+      name: 'Harbor Crest Seaside Mansion ($280,000)',
+      desc: 'Purchase oceanfront villa on-site! Earns $16,000 rent per cycle.',
+      position: new THREE.Vector3(c.x, 0.5, c.z - 100),
+      color: 0x2ecc71,
+      action: 'buy_property_onsite',
+      propertyId: 'ocean_mansion'
+    });
   }
 
   // ------------------------------------------------------------
@@ -471,6 +627,18 @@ class CityWorld {
     wh.position.set(c.x - 220, 10, c.z);
     g.add(wh);
     this.addCityCollider(city, c.x - 220, c.z, 70, 100);
+
+    // On-Site Property Purchase Beacon
+    this.addCityInteractiveZone(city, {
+      id: 'prop_docks_warehouse',
+      type: 'property_sale',
+      name: 'Pier 9 Commercial Hub ($90,000)',
+      desc: 'Purchase warehouse on-site! Earns $5,000 rent per cycle.',
+      position: new THREE.Vector3(c.x + 50, 0.5, c.z + 50),
+      color: 0x2ecc71,
+      action: 'buy_property_onsite',
+      propertyId: 'docks_warehouse'
+    });
   }
 
   // ------------------------------------------------------------
@@ -530,6 +698,18 @@ class CityWorld {
 
     // Suburb 24/7 SuperMart
     this.buildSuperMart(city, c.x, c.z, 'Maple Suburbs Grocery');
+
+    // On-Site Property Purchase Beacon
+    this.addCityInteractiveZone(city, {
+      id: 'prop_suburban_villa',
+      type: 'property_sale',
+      name: 'Maple Grove Family Bungalow ($24,000)',
+      desc: 'Purchase property on-site! Earns $1,200 rent per cycle.',
+      position: new THREE.Vector3(c.x, 0.5, c.z - 50),
+      color: 0x2ecc71,
+      action: 'buy_property_onsite',
+      propertyId: 'suburban_villa'
+    });
   }
 
   // ------------------------------------------------------------
@@ -822,6 +1002,47 @@ class CityWorld {
       position: new THREE.Vector3(x, 0.5, z - 18),
       color: 0xf1c40f,
       action: 'open_bank'
+    });
+
+    // ATM Terminal & Bank Teller Desk (Deposit / Withdraw physical cash)
+    this.addCityInteractiveZone(city, {
+      id: `atm_${city.id}`,
+      type: 'bank_atm',
+      name: 'First National Bank & ATM (Deposit / Withdraw)',
+      desc: 'Deposit physical cash or withdraw bank funds.',
+      position: new THREE.Vector3(x + 12, 0.5, z - 18),
+      color: 0x0984e3,
+      action: 'open_bank_atm'
+    });
+  }
+
+  buildConstructionCo(city, x, z) {
+    const g = city.group;
+
+    const b = new THREE.Mesh(
+      new THREE.BoxGeometry(40, 16, 36),
+      new THREE.MeshLambertMaterial({ color: 0x00cec9 })
+    );
+    b.position.set(x, 8.3, z);
+    g.add(b);
+    this.addCityCollider(city, x, z, 40, 36);
+
+    // Construction Signboard
+    const sign = new THREE.Mesh(
+      new THREE.BoxGeometry(24, 2.4, 0.4),
+      new THREE.MeshBasicMaterial({ color: 0xf1c40f })
+    );
+    sign.position.set(x, 15, z - 18.2);
+    g.add(sign);
+
+    this.addCityInteractiveZone(city, {
+      id: 'construction_co',
+      type: 'construction',
+      name: 'Apex Construction Co. (Property Renovations)',
+      desc: 'Visit office to hire contractors and upgrade owned properties for higher rent!',
+      position: new THREE.Vector3(x, 0.5, z - 20),
+      color: 0x00cec9,
+      action: 'open_construction'
     });
   }
 

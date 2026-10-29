@@ -326,28 +326,40 @@ class GameUI {
       `;
     } else if (appName === 'realestate') {
       const props = Object.values(this.game.economy.properties);
-      let html = `<div class="phone-app-header"><h3>🏢 Real Estate Empire</h3></div><div class="phone-list">`;
+      let html = `
+        <div class="phone-app-header"><h3>🏢 Real Estate Empire</h3></div>
+        <p style="font-size:11px; color:#94a3b8; margin: 4px 12px 10px;">
+          📍 Properties must be purchased on-site by signing physical deeds. Renovations must be contracted at Apex Construction Co.
+        </p>
+        <div class="phone-list">
+      `;
       props.forEach(p => {
         html += `
           <div class="phone-card">
-            <div style="display:flex; justify-content:space-between;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
               <strong>${p.name}</strong>
               <span class="badge ${p.owned ? 'badge-owned' : ''}">${p.owned ? 'OWNED' : '$' + p.price.toLocaleString()}</span>
             </div>
+            <div style="font-size:11px; color:#00f0ff; margin-top:2px;">📍 Location: ${p.locationName || 'Downtown'}</div>
             <p style="font-size:12px; margin:4px 0;">${p.desc}</p>
             <p style="font-size:12px; color:#2ecc71;">Rent Yield: <strong>+$${p.rentIncome}/cycle</strong> (Lv. ${p.level})</p>
             ${
               p.owned
                 ? `
-              <div style="display:flex; gap:6px; margin-top:6px;">
+              <div style="display:flex; flex-direction:column; gap:6px; margin-top:6px;">
                 <button class="btn btn-sm ${p.isRented ? 'btn-success' : 'btn-secondary'}" onclick="window.game.economy.togglePropertyRent('${p.id}'); window.gameUI.openPhoneApp('realestate');">
-                  ${p.isRented ? 'Leased (Rented Out)' : 'Safehouse (Private)'}
+                  ${p.isRented ? '✅ Leased (Generating Rent)' : '🛌 Safehouse (Private - Heals HP)'}
                 </button>
-                <button class="btn btn-sm btn-info" onclick="window.game.economy.upgradeProperty('${p.id}'); window.gameUI.openPhoneApp('realestate');">
-                  Renovate ($${p.renovationCost.toLocaleString()})
+                <button class="btn btn-sm btn-info" onclick="window.game.economy.locateConstructionCompany();">
+                  🏗️ Route to Apex Construction Co. (Renovate)
                 </button>
               </div>`
-                : `<button class="btn btn-sm btn-primary" onclick="window.game.economy.buyProperty('${p.id}'); window.gameUI.openPhoneApp('realestate');">Buy Property</button>`
+                : `
+              <div style="margin-top:6px;">
+                <button class="btn btn-sm btn-primary" style="width:100%;" onclick="window.game.economy.locatePropertyOnMap('${p.id}');">
+                  📍 Locate on GPS (Travel to Buy On-Site)
+                </button>
+              </div>`
             }
           </div>
         `;
@@ -448,16 +460,28 @@ class GameUI {
       bodyEl.innerHTML = html;
     } else if (appName === 'bank') {
       bodyEl.innerHTML = `
-        <div class="phone-app-header"><h3>🏦 First City Bank</h3></div>
+        <div class="phone-app-header"><h3>🏦 First National Mobile Banking</h3></div>
         <div class="phone-list">
           <div class="phone-card">
-            <div>Wallet Cash: <strong style="color:#2ecc71;">$${this.game.economy.cash.toLocaleString()}</strong></div>
-            <div>Bank Balance: <strong style="color:#3498db;">$${this.game.economy.bank.toLocaleString()}</strong></div>
+            <div style="font-size:11px; color:#94a3b8; margin-bottom:6px;">ACCOUNT HOLDER: CITIZEN #08492</div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+              <span>💵 Cash in Wallet:</span>
+              <strong style="color:#2ecc71;">$${this.game.economy.cash.toLocaleString()}</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between;">
+              <span>💳 Bank Balance:</span>
+              <strong style="color:#00f0ff;">$${this.game.economy.bank.toLocaleString()}</strong>
+            </div>
           </div>
-          <div style="display:flex; gap:8px; margin-top:10px;">
-            <button class="btn btn-primary" onclick="window.game.economy.cash += 100000 ; window.game.economy.bank -= 100000; window.gameUI.updateBalance(window.game.economy.cash, window.game.economy.bank); window.gameUI.openPhoneApp('bank');">Withdraw $100K</button>
-            <button class="btn btn-success" onclick="if(window.game.economy.cash>=100000){window.game.economy.cash-=100000; window.game.economy.bank+=100000; window.gameUI.updateBalance(window.game.economy.cash, window.game.economy.bank); window.gameUI.openPhoneApp('bank');}">Deposit $100K</button>
+          <div class="phone-card" style="border-left: 3px solid #f1c40f;">
+            <h4 style="margin:0 0 4px; font-size:12px; color:#f1c40f;">⚠️ PHYSICAL CASH RESTRICTION</h4>
+            <p style="font-size:11px; color:#cbd5e1; margin:0;">
+              Under state banking laws, physical currency deposits and withdrawals cannot be processed electronically via smartphone. Please visit <strong>First National Bank</strong> or any physical <strong>ATM Kiosk</strong> in the city.
+            </p>
           </div>
+          <button class="btn btn-primary" style="margin-top:8px; width:100%; padding:10px;" onclick="window.game.economy.locateBank();">
+            📍 GPS Route to First National Bank / ATM
+          </button>
         </div>
       `;
     }
@@ -818,6 +842,80 @@ class GameUI {
     }
   }
 
+  // ------------------------------------------------------------
+  // FIRST NATIONAL BANK & ATM KIOSK MODAL
+  // ------------------------------------------------------------
+
+  openBankATMModal() {
+    this.closeAllModals();
+    const modal = document.getElementById('bank-atm-modal');
+    if (!modal) return;
+
+    const cashVal = document.getElementById('atm-cash-val');
+    const bankVal = document.getElementById('atm-bank-val');
+    if (cashVal) cashVal.innerText = `$${this.game.economy.cash.toLocaleString()}`;
+    if (bankVal) bankVal.innerText = `$${this.game.economy.bank.toLocaleString()}`;
+
+    if (window.soundManager) window.soundManager.playDoorChime();
+    modal.classList.add('active');
+    this.activeModal = modal;
+  }
+
+  // ------------------------------------------------------------
+  // APEX CONSTRUCTION CO. RENOVATION MODAL
+  // ------------------------------------------------------------
+
+  openConstructionModal() {
+    this.closeAllModals();
+    const modal = document.getElementById('construction-modal');
+    if (!modal) return;
+    const listEl = document.getElementById('construction-properties-list');
+    if (!listEl) return;
+
+    listEl.innerHTML = '';
+    const props = Object.values(this.game.economy.properties);
+    const ownedProps = props.filter(p => p.owned);
+
+    if (ownedProps.length === 0) {
+      listEl.innerHTML = `
+        <div style="text-align:center; padding:30px; grid-column: 1 / -1;">
+          <h3 style="color:#00cec9;">No Owned Properties on File</h3>
+          <p style="color:#aaa; margin-top:8px;">You don't own any real estate yet! Travel to physical properties around the city and purchase title deeds on-site before ordering renovations.</p>
+        </div>
+      `;
+    } else {
+      let html = `
+        <div style="grid-column: 1 / -1; margin-bottom:12px; font-size:12px; color:#cbd5e1; background:rgba(0,0,0,0.3); padding:10px 14px; border-radius:8px;">
+          Apex General Contractors will upgrade your building structures, interior fittings, and high-yield leases to maximize passive rental income.
+        </div>
+      `;
+      ownedProps.forEach(p => {
+        html += `
+          <div class="shop-item-card" style="border: 1px solid rgba(0, 206, 201, 0.3);">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <h4 style="margin:0; color:#00cec9;">${p.name}</h4>
+              <span class="badge badge-owned">Lv. ${p.level}</span>
+            </div>
+            <p style="font-size:11px; color:#94a3b8; margin:4px 0;">📍 Location: ${p.locationName || 'Downtown'}</p>
+            <p style="font-size:12px; margin:4px 0;">${p.desc}</p>
+            <div style="background:rgba(0,0,0,0.3); padding:8px; border-radius:6px; margin:8px 0; font-size:12px;">
+              <div>Current Rent: <strong style="color:#2ecc71;">+$${p.rentIncome.toLocaleString()}/cycle</strong></div>
+              <div>Upgraded Rent: <strong style="color:#00f0ff;">+$${Math.round(p.rentIncome * 1.55).toLocaleString()}/cycle</strong></div>
+            </div>
+            <button class="btn btn-primary btn-sm" style="width:100%;" onclick="window.game.economy.renovatePropertyAtCompany('${p.id}'); window.gameUI.openConstructionModal();">
+              🔨 Sign Renovation Contract ($${p.renovationCost.toLocaleString()})
+            </button>
+          </div>
+        `;
+      });
+      listEl.innerHTML = html;
+    }
+
+    if (window.soundManager) window.soundManager.playDoorChime();
+    modal.classList.add('active');
+    this.activeModal = modal;
+  }
+
   showCityWelcome(name, tagline) {
     const card = document.getElementById('city-welcome-card');
     const nameEl = document.getElementById('city-welcome-name');
@@ -1160,14 +1258,17 @@ class GameUI {
 
     const playerPos = this.game.player.position;
 
-    // Roads
+    // 1. Dynamic Roads (Scrolling seamlessly anywhere across all cities and highways)
     const totalStep = 78;
-    ctx.strokeStyle = '#22303c';
-    ctx.lineWidth = 5;
+    const baseGridX = Math.floor(playerPos.x / totalStep) * totalStep;
+    const baseGridZ = Math.floor(playerPos.z / totalStep) * totalStep;
 
-    for (let i = -3; i <= 3; i++) {
-      const rx = center + (i * totalStep - playerPos.x) * scale;
-      const rz = center + (i * totalStep - playerPos.z) * scale;
+    ctx.strokeStyle = '#22303c';
+    ctx.lineWidth = 6;
+
+    for (let i = -4; i <= 4; i++) {
+      const rx = center + ((baseGridX + i * totalStep) - playerPos.x) * scale;
+      const rz = center + ((baseGridZ + i * totalStep) - playerPos.z) * scale;
 
       ctx.beginPath();
       ctx.moveTo(rx, 0);
@@ -1180,47 +1281,171 @@ class GameUI {
       ctx.stroke();
     }
 
-    // Interactive Landmarks
-    this.game.world.interactiveSpots.forEach(spot => {
-      const sx = center + (spot.position.x - playerPos.x) * scale;
-      const sz = center + (spot.position.z - playerPos.z) * scale;
+    // Dashed road centerlines
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 4]);
+    for (let i = -4; i <= 4; i++) {
+      const rx = center + ((baseGridX + i * totalStep) - playerPos.x) * scale;
+      const rz = center + ((baseGridZ + i * totalStep) - playerPos.z) * scale;
 
-      ctx.fillStyle = '#' + spot.color.toString(16).padStart(6, '0');
       ctx.beginPath();
-      ctx.arc(sx, sz, 4, 0, Math.PI * 2);
-      ctx.fill();
-    });
+      ctx.moveTo(rx, 0);
+      ctx.lineTo(rx, size);
+      ctx.stroke();
 
-    // Mission Objective
-    if (this.game.jobs.activeMission) {
-      const dest =
-        this.game.jobs.activeMission.stage === 'deliver' || this.game.jobs.activeMission.stage === 'dropoff'
-          ? this.game.jobs.activeMission.dropoffPos
-          : this.game.jobs.activeMission.pickupPos;
+      ctx.beginPath();
+      ctx.moveTo(0, rz);
+      ctx.lineTo(size, rz);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
 
-      if (dest) {
-        const mx = center + (dest.x - playerPos.x) * scale;
-        const mz = center + (dest.z - playerPos.z) * scale;
+    // 2. Interactive Landmarks
+    if (this.game.world && this.game.world.interactiveSpots) {
+      this.game.world.interactiveSpots.forEach(spot => {
+        const sx = center + (spot.position.x - playerPos.x) * scale;
+        const sz = center + (spot.position.z - playerPos.z) * scale;
 
-        ctx.fillStyle = '#ffea00';
+        ctx.fillStyle = '#' + spot.color.toString(16).padStart(6, '0');
         ctx.beginPath();
-        ctx.arc(mx, mz, 6, 0, Math.PI * 2);
+        ctx.arc(sx, sz, 4, 0, Math.PI * 2);
         ctx.fill();
+      });
+    }
+
+    // 3. Police Units & Cruisers on Radar
+    if (this.game.pedestrianManager) {
+      if (this.game.pedestrianManager.policeCar) {
+        const pc = this.game.pedestrianManager.policeCar.group.position;
+        const pcx = center + (pc.x - playerPos.x) * scale;
+        const pcz = center + (pc.z - playerPos.z) * scale;
+        ctx.fillStyle = '#0984e3';
+        ctx.beginPath();
+        ctx.arc(pcx, pcz, 5.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#e74c3c';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+      if (this.game.pedestrianManager.policeOfficer) {
+        const po = this.game.pedestrianManager.policeOfficer.position;
+        const pox = center + (po.x - playerPos.x) * scale;
+        const poz = center + (po.z - playerPos.z) * scale;
+        ctx.fillStyle = '#e74c3c';
+        ctx.beginPath();
+        ctx.arc(pox, poz, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.stroke();
       }
     }
 
-    // Assassin Targets
-    this.game.pedestrianManager.targets.forEach(t => {
-      const tx = center + (t.mesh.position.x - playerPos.x) * scale;
-      const tz = center + (t.mesh.position.z - playerPos.z) * scale;
+    // 4. Assassin Targets
+    if (this.game.pedestrianManager && this.game.pedestrianManager.targets) {
+      this.game.pedestrianManager.targets.forEach(t => {
+        const tx = center + (t.mesh.position.x - playerPos.x) * scale;
+        const tz = center + (t.mesh.position.z - playerPos.z) * scale;
 
-      ctx.fillStyle = t.isDead ? '#00ff88' : '#ff0044';
-      ctx.beginPath();
-      ctx.arc(tx, tz, 5, 0, Math.PI * 2);
-      ctx.fill();
-    });
+        ctx.fillStyle = t.isDead ? '#00ff88' : '#ff0044';
+        ctx.beginPath();
+        ctx.arc(tx, tz, 5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
 
-    // Player Direction Arrow
+    // 5. Mission Objective / Destination & Waypoint Navigation
+    let targetPos = null;
+    let targetLabel = '';
+    let targetColor = '#ffea00';
+
+    if (this.game.jobs && this.game.jobs.activeMission) {
+      const mission = this.game.jobs.activeMission;
+      targetPos = (mission.stage === 'deliver' || mission.stage === 'dropoff')
+        ? mission.dropoffPos
+        : mission.pickupPos;
+
+      if (mission.type === 'ambulance') {
+        targetLabel = mission.stage === 'pickup' ? '🚑 Patient' : '🏥 Hospital ER';
+        targetColor = '#e74c3c';
+      } else if (mission.type === 'taxi') {
+        targetLabel = mission.stage === 'pickup_passenger' ? '🚖 Fare' : '📍 Dropoff';
+        targetColor = '#f1c40f';
+      } else if (mission.type === 'delivery') {
+        targetLabel = mission.stage === 'pickup_order' ? '🍕 Pizzeria' : '📦 Customer';
+        targetColor = '#f39c12';
+      }
+    } else if (this.game.jobs && this.game.jobs.beaconPos) {
+      targetPos = this.game.jobs.beaconPos;
+      targetLabel = '📍 Target';
+      targetColor = '#00f0ff';
+    }
+
+    if (targetPos) {
+      const dx = targetPos.x - playerPos.x;
+      const dz = targetPos.z - playerPos.z;
+      const dist = Math.hypot(dx, dz);
+      const screenDx = dx * scale;
+      const screenDz = dz * scale;
+      const screenDist = Math.hypot(screenDx, screenDz);
+      const maxRadarDist = center - 14;
+
+      if (screenDist <= maxRadarDist) {
+        // Render inside radar circle
+        const mx = center + screenDx;
+        const mz = center + screenDz;
+
+        ctx.fillStyle = targetColor;
+        ctx.beginPath();
+        ctx.arc(mx, mz, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.fillStyle = targetColor;
+        ctx.font = 'bold 9px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${Math.round(dist)}m`, mx, mz - 8);
+      } else {
+        // Off-screen waypoint! Render directional navigation chevron along the rim with distance
+        const angle = Math.atan2(screenDz, screenDx);
+        const rimX = center + Math.cos(angle) * (center - 12);
+        const rimY = center + Math.sin(angle) * (center - 12);
+
+        ctx.save();
+        ctx.translate(rimX, rimY);
+        ctx.rotate(angle);
+
+        const pulse = 1 + Math.sin(Date.now() * 0.01) * 0.25;
+        ctx.fillStyle = targetColor;
+        ctx.beginPath();
+        ctx.moveTo(7 * pulse, 0);
+        ctx.lineTo(-6 * pulse, -5 * pulse);
+        ctx.lineTo(-3 * pulse, 0);
+        ctx.lineTo(-6 * pulse, 5 * pulse);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.restore();
+
+        // Distance text near chevron
+        const textDistX = center + Math.cos(angle) * (center - 25);
+        const textDistY = center + Math.sin(angle) * (center - 25);
+        ctx.fillStyle = targetColor;
+        ctx.font = 'bold 9px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.shadowColor = '#000000';
+        ctx.shadowBlur = 3;
+        ctx.fillText(`${targetLabel} ${Math.round(dist)}m`, textDistX, textDistY);
+        ctx.shadowBlur = 0;
+      }
+    }
+
+    // 6. Player Direction Arrow
     ctx.save();
     ctx.translate(center, center);
     const angle = this.game.vehicleManager.activeVehicle
@@ -1236,11 +1461,14 @@ class GameUI {
     ctx.lineTo(-5, 6);
     ctx.closePath();
     ctx.fill();
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1;
+    ctx.stroke();
     ctx.restore();
 
     ctx.restore();
 
-    // Radar border
+    // 7. Radar Border & Compass Ring
     ctx.strokeStyle = '#00f0ff';
     ctx.lineWidth = 2;
     ctx.beginPath();
