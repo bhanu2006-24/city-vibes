@@ -62,9 +62,9 @@
             <div id="hud-health-fill" class="stat-bar-fill health-fill" style="width: 100%;"></div>
           </div>
         </div>
-        <div style="display: none;">
+        <div>
           <div style="display:flex; justify-content:space-between; font-size:10px; font-weight:700; color:#00f0ff; margin-bottom:2px;">
-            <span>ARMOR</span>
+            <span>🛡️ ARMOR</span>
           </div>
           <div class="stat-bar">
             <div id="hud-armor-fill" class="stat-bar-fill armor-fill" style="width: 0%;"></div>
@@ -74,6 +74,9 @@
 
       <!-- Quick Toggles: View Mode & Holster Status -->
       <div class="hud-status-row">
+        <div id="hud-location-pill" class="status-pill" style="background:rgba(0,240,255,0.15); border-color:#00f0ff; color:#00f0ff;">
+          📍 Downtown Metropolis
+        </div>
         <div id="hud-viewmode-pill" class="status-pill pill-interactive" onclick="if(window.game) window.game.player.toggleViewMode();" title="Click or Press V to toggle Third-Person / First-Person View">
           🎥 TPS
         </div>
@@ -87,7 +90,12 @@
     <div class="hud-top-right">
       <!-- Police Wanted Stars (1 to 5 Stars) -->
       <div id="hud-wanted-stars" class="wanted-stars-container" style="display:none;"></div>
-      <div class="minimap-wrapper">
+      <div id="minimap-container" class="minimap-wrapper" title="Click or Press [M] to Toggle Full World Map">
+        <button id="minimap-toggle-btn" class="minimap-btn" title="Toggle Full World Map (M)">⤢</button>
+        <div id="minimap-max-header" style="display:none;">
+          <span>🗺️ FULL ARCHIPELAGO WORLD MAP (30,000 × 30,000)</span>
+          <span style="font-size:11px; color:#94a3b8; font-weight:normal;">[M] or ✕ to Minimize • Click any City for Taxi ($200)</span>
+        </div>
         <canvas id="minimap-canvas" width="170" height="170"></canvas>
       </div>
     </div>
@@ -190,6 +198,74 @@
       <button class="modal-close-btn">&times;</button>
     </div>
     <div class="modal-body"></div>
+  </div>
+
+  <!-- 24/7 SuperMart & Shop Interior Modal -->
+  <div id="supermart-modal" class="game-modal">
+    <div class="modal-header">
+      <h2 id="supermart-title">🛒 24/7 SuperMart & Organised Store</h2>
+      <button class="modal-close-btn">&times;</button>
+    </div>
+    <div class="modal-body">
+      <!-- Clerk & Store Dialogue -->
+      <div class="store-clerk-banner">
+        <div class="clerk-avatar">👨‍💼</div>
+        <div class="clerk-speech">
+          <strong>Store Clerk Sal:</strong>
+          <span id="clerk-dialogue">"Welcome to the 24/7 SuperMart! Take your time, everything is fully stocked on the shelves!"</span>
+        </div>
+      </div>
+
+      <!-- Shop Merchandise & Loot Row -->
+      <div class="store-layout-grid">
+        <div id="supermart-items-list" class="store-shelf-items"></div>
+        <div class="store-action-panel">
+          <div class="register-box">
+            <h4>💰 Cash Register</h4>
+            <p style="font-size:12px; color:#aaa; margin:6px 0;">Contains the day's earnings ($800 - $2,500).</p>
+            <button id="rob-register-btn" class="btn btn-danger" style="width:100%; font-size:13px; font-weight:bold;">
+              🔫 Rob Cash Register [F]
+            </button>
+            <p style="font-size:10px; color:#ff6b6b; margin-top:5px;">⚠️ Warning: Triggers 911 Alarm & 2-Star Police pursuit!</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- City Arrival Welcome Banner -->
+  <div id="city-welcome-card">
+    <div id="city-welcome-name">🏙️ DOWNTOWN METROPOLIS</div>
+    <div id="city-welcome-tagline">Skyscraper Core & Citadel Tower</div>
+  </div>
+
+  <!-- Coast Guard Sea Boundary Warning -->
+  <div id="sea-boundary-banner">
+    🌊 OPEN OCEAN BOUNDARY: Coast Guard Restricted Waters - Returning to Shore
+  </div>
+
+  <!-- Cinematic BUSTED Screen Overlay -->
+  <div id="busted-screen">
+    <div class="busted-content">
+      <h1 class="busted-title">BUSTED</h1>
+      <p class="busted-subtitle">Arrested by Metropolitan Police Department</p>
+      <div class="busted-details">
+        <div class="busted-item"><span>Status:</span> <strong>Apprehended at 10% HP</strong></div>
+        <div class="busted-item"><span>Confiscated:</span> <strong>Illegal Firearms Cleared</strong></div>
+        <div class="busted-item"><span>Bail & Medical Fine:</span> <strong style="color:#e74c3c;">-$1,200</strong></div>
+        <div class="busted-item"><span>Police Heat:</span> <strong style="color:#2ecc71;">Cleared (0 Stars)</strong></div>
+      </div>
+      <p class="busted-respawn-msg">Transferring to Central Precinct...</p>
+    </div>
+  </div>
+
+  <!-- Cinematic WASTED Screen Overlay -->
+  <div id="wasted-screen">
+    <div class="wasted-content">
+      <h1 class="wasted-title">WASTED</h1>
+      <p class="wasted-subtitle">Critical Injuries Sustained</p>
+      <p class="busted-respawn-msg">Admitting to St. Jude Hospital Emergency Ward...</p>
+    </div>
   </div>
 
   <!-- Bounty Claimed Victory Modal -->

@@ -21,7 +21,7 @@ class JobManager {
     this.game.scene.add(this.beaconGroup);
     this.beaconGroup.visible = false;
 
-    // Available Assassin Contracts across all 6 Regions
+    // Available Assassin Contracts across all 8 Cities
     this.assassinContracts = [
       {
         id: 'contract_1',
@@ -30,7 +30,7 @@ class JobManager {
         desc: 'Vance laundered millions from the Black Lotus family and is preparing to flee the city on a private yacht at Vice Beach Marina.',
         bounty: 15000,
         completed: false,
-        spawnLocation: new THREE.Vector3(320, 1, -60),
+        spawnLocation: new THREE.Vector3(3400, 1, 600),
         status: 'available'
       },
       {
@@ -40,47 +40,67 @@ class JobManager {
         desc: 'Sterling is pushing bills to seize our safehouses under the guise of urban redevelopment. Terminate him at his Maple Valley Suburbs estate.',
         bounty: 22000,
         completed: false,
-        spawnLocation: new THREE.Vector3(260, 1, 300),
+        spawnLocation: new THREE.Vector3(3200, 1, 3400),
         status: 'available'
       },
       {
         id: 'contract_3',
         targetName: "Dante 'Ghost' Moretti",
         title: 'Rival Hitman',
-        desc: 'A rogue assassin taking contracts on our members. Spotted lurking beneath the red lanterns of the Chinatown Neon District.',
+        desc: 'A rogue assassin taking contracts on our members. Spotted lurking beneath the red lanterns of the Neo-Chinatown District.',
         bounty: 28000,
         completed: false,
-        spawnLocation: new THREE.Vector3(39, 1, -260),
+        spawnLocation: new THREE.Vector3(600, 1, -3600),
         status: 'available'
       },
       {
         id: 'contract_4',
         targetName: 'Helena Cross',
         title: 'Underground Tech Smuggler',
-        desc: 'Intercepted encrypted guild comms. Eliminate her at the Industrial Port Container Terminal before she sells access codes.',
+        desc: 'Intercepted encrypted guild comms. Eliminate her at Liberty Industrial Port Container Terminal before she sells access codes.',
         bounty: 35000,
         completed: false,
-        spawnLocation: new THREE.Vector3(-260, 1, -260),
+        spawnLocation: new THREE.Vector3(-3200, 1, -3200),
         status: 'available'
       },
       {
         id: 'contract_5',
         targetName: "'Mad Dog' Callahan",
         title: 'Desert Outlaw Kingpin',
-        desc: 'Running illegal arms shipments through the North-West Badlands Desert. Neutralize him at his desert outpost hideout.',
+        desc: 'Running illegal arms shipments through Red Rock Badlands. Neutralize him at his desert outpost hideout.',
         bounty: 42000,
         completed: false,
-        spawnLocation: new THREE.Vector3(-280, 1, 280),
+        spawnLocation: new THREE.Vector3(-3600, 1, 3600),
         status: 'available'
       },
       {
         id: 'contract_6',
         targetName: 'Baroness Von Brandt',
-        title: 'Syndicate Oligarch',
-        desc: 'High-value target walking in the Downtown Citadel Plaza. Tip: Ride the Citadel Express Elevator to the 138m Rooftop for a clean sniper elimination!',
+        title: 'Downtown Syndicate Oligarch',
+        desc: 'High-value target walking in Downtown Citadel Plaza. Tip: Ride Citadel Express Elevator to the 138m Rooftop for a clean sniper elimination!',
         bounty: 50000,
         completed: false,
-        spawnLocation: new THREE.Vector3(39, 1, -15),
+        spawnLocation: new THREE.Vector3(39, 1, 10),
+        status: 'available'
+      },
+      {
+        id: 'contract_7',
+        targetName: "Don 'Goldfinger' Salvatore",
+        title: 'Casino Kingpin',
+        desc: 'Controlling the underground gambling rackets on the Las Palmas Casino Strip. Eliminate him outside the golden pyramid.',
+        bounty: 60000,
+        completed: false,
+        spawnLocation: new THREE.Vector3(-4200, 1, 1000),
+        status: 'available'
+      },
+      {
+        id: 'contract_8',
+        targetName: "'Ghost Wolf' Nikolai",
+        title: 'Ex-Special Forces Mercenary',
+        desc: 'Hiding out at the Alpine Pines Mountain Peak. Eliminate him from high elevation and snap photo proof.',
+        bounty: 75000,
+        completed: false,
+        spawnLocation: new THREE.Vector3(1200, 1, 5000),
         status: 'available'
       }
     ];

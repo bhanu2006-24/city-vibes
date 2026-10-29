@@ -10,6 +10,8 @@ class GameUI {
     // Minimap
     this.minimapCanvas = document.getElementById('minimap-canvas');
     this.minimapCtx = this.minimapCanvas ? this.minimapCanvas.getContext('2d') : null;
+    this.minimapWrapper = document.getElementById('minimap-container');
+    this.isMinimapMaximized = false;
 
     // HUD Elements
     this.cashEl = document.getElementById('hud-cash');
@@ -54,6 +56,32 @@ class GameUI {
     document.querySelectorAll('.modal-close-btn').forEach(btn => {
       btn.addEventListener('click', () => this.closeAllModals());
     });
+
+    // Minimap Toggle & Maximize Events
+    const mapToggleBtn = document.getElementById('minimap-toggle-btn');
+    if (mapToggleBtn) {
+      mapToggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.toggleMinimapMaximized();
+      });
+    }
+
+    if (this.minimapWrapper) {
+      this.minimapWrapper.addEventListener('click', (e) => {
+        if (!this.isMinimapMaximized) {
+          this.toggleMinimapMaximized(true);
+        }
+      });
+    }
+
+    if (this.minimapCanvas) {
+      this.minimapCanvas.addEventListener('click', (e) => {
+        if (this.isMinimapMaximized) {
+          e.stopPropagation();
+          this.handleMaximizedMapClick(e);
+        }
+      });
+    }
   }
 
   // ------------------------------------------------------------
@@ -85,9 +113,13 @@ class GameUI {
       this.healthBarEl.style.width = `${hpPercent}%`;
     }
     if (this.armorBarEl) {
-      this.armorBarEl.style.width = `${player.armor}%`;
-      this.armorBarEl.parentElement.style.display = player.armor > 0 ? 'block' : 'none';
+      this.armorBarEl.style.width = `${player.armor || 0}%`;
     }
+  }
+
+  updateHUD() {
+    this.updatePlayerHUD(this.game.player);
+    this.updateBalance(this.game.economy.cash, this.game.economy.bank);
   }
 
   updateVehicleHUD(vehicle) {
@@ -218,10 +250,47 @@ class GameUI {
             <div class="icon-box icon-gallery">🖼️</div>
             <span>Gallery</span>
           </div>
+          <div class="phone-app-icon" onclick="window.gameUI.openPhoneApp('map')">
+            <div class="icon-box" style="background: linear-gradient(135deg, #0984e3, #00cec9);">🗺️</div>
+            <span>CityMaps</span>
+          </div>
           <div class="phone-app-icon" onclick="window.gameUI.openPhoneApp('bank')">
             <div class="icon-box icon-bank">🏦</div>
             <span>Bank</span>
           </div>
+        </div>
+      `;
+    } else if (appName === 'map') {
+      const world = this.game.world;
+      const playerPos = this.game.player.position;
+      let citiesHtml = '';
+      if (world && world.cities) {
+        Object.values(world.cities).forEach(c => {
+          const dist = Math.round(playerPos.distanceTo(c.center));
+          const isCurrent = (world.currentCityId === c.id);
+          citiesHtml += `
+            <div class="phone-card" style="border-left: 4px solid #${c.color.toString(16).padStart(6, '0')}; margin-bottom: 8px;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                  <h4 style="margin:0; font-size:13px; color:#fff;">${c.name}</h4>
+                  <p style="font-size:11px; color:#94a3b8; margin:2px 0;">${c.tagline}</p>
+                  <span style="font-size:11px; color:#00f0ff;">📍 Dist: ${dist}m ${isCurrent ? '<strong style="color:#2ecc71;">(HERE)</strong>' : ''}</span>
+                </div>
+                ${isCurrent ? '<span style="color:#2ecc71; font-size:11px; font-weight:bold;">CURRENT</span>' : `
+                  <button class="btn btn-sm btn-primary" onclick="window.game.economy.fastTravelTaxi('${c.id}')">
+                    🚖 Taxi ($200)
+                  </button>
+                `}
+              </div>
+            </div>
+          `;
+        });
+      }
+      bodyEl.innerHTML = `
+        <div class="phone-app-header"><h3>🗺️ CityMaps GPS (30K x 30K)</h3></div>
+        <p style="font-size:11px; color:#94a3b8; margin: 4px 12px 10px;">Select any city across the territory to call a fast-travel taxi ($200)!</p>
+        <div class="phone-list">
+          ${citiesHtml}
         </div>
       `;
     } else if (appName === 'camera') {
@@ -386,8 +455,8 @@ class GameUI {
             <div>Bank Balance: <strong style="color:#3498db;">$${this.game.economy.bank.toLocaleString()}</strong></div>
           </div>
           <div style="display:flex; gap:8px; margin-top:10px;">
-            <button class="btn btn-primary" onclick="window.game.economy.cash += 1000; window.game.economy.bank -= 1000; window.gameUI.updateBalance(window.game.economy.cash, window.game.economy.bank); window.gameUI.openPhoneApp('bank');">Withdraw $1K</button>
-            <button class="btn btn-success" onclick="if(window.game.economy.cash>=1000){window.game.economy.cash-=1000; window.game.economy.bank+=1000; window.gameUI.updateBalance(window.game.economy.cash, window.game.economy.bank); window.gameUI.openPhoneApp('bank');}">Deposit $1K</button>
+            <button class="btn btn-primary" onclick="window.game.economy.cash += 100000 ; window.game.economy.bank -= 100000; window.gameUI.updateBalance(window.game.economy.cash, window.game.economy.bank); window.gameUI.openPhoneApp('bank');">Withdraw $100K</button>
+            <button class="btn btn-success" onclick="if(window.game.economy.cash>=100000){window.game.economy.cash-=100000; window.game.economy.bank+=100000; window.gameUI.updateBalance(window.game.economy.cash, window.game.economy.bank); window.gameUI.openPhoneApp('bank');}">Deposit $100K</button>
           </div>
         </div>
       `;
@@ -705,6 +774,362 @@ class GameUI {
     }, 4500);
   }
 
+  openSuperMartModal() {
+    this.closeAllModals();
+    const modal = document.getElementById('supermart-modal');
+    if (!modal) return;
+    this.activeModal = modal;
+    modal.classList.add('active');
+
+    if (window.soundManager) window.soundManager.playDoorChime();
+
+    // Populate catalog items
+    const listEl = document.getElementById('supermart-items-list');
+    if (listEl && this.game.economy && this.game.economy.storeCatalog) {
+      let html = '';
+      Object.values(this.game.economy.storeCatalog).forEach(item => {
+        html += `
+          <div class="store-item-card">
+            <div class="store-item-info">
+              <span class="store-item-icon">${item.icon}</span>
+              <div>
+                <strong style="color:#ecf0f1; font-size:13px;">${item.name}</strong>
+                <p style="color:#94a3b8; font-size:11px; margin:2px 0;">${item.desc}</p>
+                <span style="color:#2ecc71; font-weight:bold; font-size:12px;">$${item.price}</span>
+              </div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="window.game.economy.buyStoreItem('${item.id}');">
+              Buy Item
+            </button>
+          </div>
+        `;
+      });
+      listEl.innerHTML = html;
+    }
+
+    // Rob Cashier Button
+    const robBtn = document.getElementById('rob-register-btn');
+    if (robBtn) {
+      robBtn.onclick = () => {
+        const cityId = this.game.world ? this.game.world.currentCityId : 'metropolis';
+        this.game.economy.robStoreRegister(cityId);
+        this.closeAllModals();
+      };
+    }
+  }
+
+  showCityWelcome(name, tagline) {
+    const card = document.getElementById('city-welcome-card');
+    const nameEl = document.getElementById('city-welcome-name');
+    const tagEl = document.getElementById('city-welcome-tagline');
+    if (!card || !nameEl || !tagEl) return;
+
+    nameEl.innerText = `🏙️ ${name.toUpperCase()}`;
+    tagEl.innerText = tagline;
+    card.classList.add('active');
+
+    if (this.welcomeTimer) clearTimeout(this.welcomeTimer);
+    this.welcomeTimer = setTimeout(() => {
+      card.classList.remove('active');
+    }, 3800);
+
+    const locPill = document.getElementById('hud-location-pill');
+    if (locPill) {
+      locPill.innerText = `📍 ${name}`;
+    }
+  }
+
+  showSeaWarning() {
+    const banner = document.getElementById('sea-boundary-banner');
+    if (!banner) return;
+    banner.style.display = 'block';
+    if (this.seaTimer) clearTimeout(this.seaTimer);
+    this.seaTimer = setTimeout(() => {
+      banner.style.display = 'none';
+    }, 2500);
+  }
+
+  showBustedScreen() {
+    const screen = document.getElementById('busted-screen');
+    if (screen) screen.classList.add('active');
+  }
+
+  hideBustedScreen() {
+    const screen = document.getElementById('busted-screen');
+    if (screen) screen.classList.remove('active');
+  }
+
+  showWastedScreen() {
+    const screen = document.getElementById('wasted-screen');
+    if (screen) screen.classList.add('active');
+  }
+
+  hideWastedScreen() {
+    const screen = document.getElementById('wasted-screen');
+    if (screen) screen.classList.remove('active');
+  }
+
+  toggleMinimapMaximized(forceState = null) {
+    this.isMinimapMaximized = (forceState !== null) ? forceState : !this.isMinimapMaximized;
+
+    if (this.minimapWrapper) {
+      this.minimapWrapper.classList.toggle('maximized', this.isMinimapMaximized);
+    }
+
+    const header = document.getElementById('minimap-max-header');
+    if (header) {
+      header.style.display = this.isMinimapMaximized ? 'flex' : 'none';
+    }
+
+    const btn = document.getElementById('minimap-toggle-btn');
+    if (btn) {
+      btn.innerHTML = this.isMinimapMaximized ? '✕' : '⤢';
+      btn.title = this.isMinimapMaximized ? 'Close Full Map (M)' : 'Maximize Full World Map (M)';
+    }
+
+    // Resize canvas resolution for crisp rendering
+    if (this.minimapCanvas) {
+      if (this.isMinimapMaximized) {
+        this.minimapCanvas.width = 720;
+        this.minimapCanvas.height = 720;
+      } else {
+        this.minimapCanvas.width = 170;
+        this.minimapCanvas.height = 170;
+      }
+    }
+
+    if (window.soundManager) window.soundManager.playNotification(true);
+  }
+
+  handleMaximizedMapClick(e) {
+    if (!this.minimapCanvas) return;
+    const rect = this.minimapCanvas.getBoundingClientRect();
+    const clickX = ((e.clientX - rect.left) / rect.width) * this.minimapCanvas.width;
+    const clickY = ((e.clientY - rect.top) / rect.height) * this.minimapCanvas.height;
+
+    const size = this.minimapCanvas.width;
+    const center = size / 2;
+    const maxWorldRadius = 15000;
+    const mapScale = (size * 0.44) / maxWorldRadius;
+
+    // Convert click coordinates to world coordinates
+    const worldX = (clickX - center) / mapScale;
+    const worldZ = (clickY - center) / mapScale;
+
+    // Check if clicked near any city
+    const world = this.game.world;
+    if (world && world.cities) {
+      for (const [key, city] of Object.entries(world.cities)) {
+        const dx = worldX - city.center.x;
+        const dz = worldZ - city.center.z;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+
+        // Click within city region
+        if (dist < 1500) {
+          if (world.currentCityId === city.id) {
+            this.showNotification(`📍 You are currently in ${city.name}!`, 'info');
+          } else {
+            this.game.economy.fastTravelTaxi(city.id);
+            this.toggleMinimapMaximized(false);
+          }
+          return;
+        }
+      }
+    }
+  }
+
+  drawMaximizedWorldMap(ctx, size) {
+    const center = size / 2;
+    // 30,000m x 30,000m world mapped into canvas
+    const maxWorldRadius = 15000;
+    const mapScale = (size * 0.44) / maxWorldRadius;
+
+    // 1. Deep Ocean Background
+    ctx.fillStyle = '#061626';
+    ctx.fillRect(0, 0, size, size);
+
+    // 2. Sea Boundary Danger Ring (14,500m)
+    const seaPixelRadius = 14500 * mapScale;
+    ctx.strokeStyle = 'rgba(255, 59, 48, 0.55)';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([8, 6]);
+    ctx.beginPath();
+    ctx.arc(center, center, seaPixelRadius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = 'rgba(255, 59, 48, 0.75)';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('🌊 COAST GUARD OCEAN BOUNDARY (14,500m)', center, center - seaPixelRadius + 18);
+
+    // 3. Central Mainland Landmass
+    const landPixelRadius = 8500 * mapScale;
+    ctx.fillStyle = '#142318';
+    ctx.beginPath();
+    ctx.arc(center, center, landPixelRadius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#1e3825';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    const world = this.game.world;
+    if (!world || !world.cities) return;
+
+    // 4. Draw Trans-Archipelago Expressways
+    const metro = world.cities.metropolis.center;
+    const metroX = center + metro.x * mapScale;
+    const metroZ = center + metro.z * mapScale;
+
+    ctx.strokeStyle = '#34495e';
+    ctx.lineWidth = 4;
+    Object.values(world.cities).forEach(city => {
+      if (city.id === 'metropolis') return;
+      const cx = center + city.center.x * mapScale;
+      const cz = center + city.center.z * mapScale;
+      ctx.beginPath();
+      ctx.moveTo(metroX, metroZ);
+      ctx.lineTo(cx, cz);
+      ctx.stroke();
+    });
+
+    ctx.strokeStyle = '#e8b82a';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    Object.values(world.cities).forEach(city => {
+      if (city.id === 'metropolis') return;
+      const cx = center + city.center.x * mapScale;
+      const cz = center + city.center.z * mapScale;
+      ctx.beginPath();
+      ctx.moveTo(metroX, metroZ);
+      ctx.lineTo(cx, cz);
+      ctx.stroke();
+    });
+    ctx.setLineDash([]);
+
+    // 5. Draw 8 Cities with Glowing Halos, Pins & Labels
+    const playerPos = this.game.player.position;
+
+    Object.values(world.cities).forEach(city => {
+      const cx = center + city.center.x * mapScale;
+      const cz = center + city.center.z * mapScale;
+      const isCurrent = (world.currentCityId === city.id);
+
+      // City boundary circle
+      ctx.fillStyle = isCurrent ? 'rgba(0, 240, 255, 0.18)' : 'rgba(255, 255, 255, 0.05)';
+      ctx.strokeStyle = '#' + city.color.toString(16).padStart(6, '0');
+      ctx.lineWidth = isCurrent ? 2 : 1;
+      ctx.beginPath();
+      ctx.arc(cx, cz, city.radius * mapScale, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // City Center Pin
+      ctx.fillStyle = '#' + city.color.toString(16).padStart(6, '0');
+      ctx.beginPath();
+      ctx.arc(cx, cz, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // City Title Label
+      ctx.fillStyle = isCurrent ? '#00f0ff' : '#ffffff';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.shadowColor = '#000000';
+      ctx.shadowBlur = 4;
+      ctx.fillText(city.name, cx, cz - 12);
+      ctx.shadowBlur = 0;
+
+      // Distance & taxi hint
+      const dist = Math.round(playerPos.distanceTo(city.center));
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '10px sans-serif';
+      ctx.fillText(`${dist}m • Click for Taxi ($200)`, cx, cz + 18);
+    });
+
+    // 6. Mission Waypoint Marker
+    if (this.game.jobs && this.game.jobs.activeMission) {
+      const dest =
+        this.game.jobs.activeMission.stage === 'deliver' || this.game.jobs.activeMission.stage === 'dropoff'
+          ? this.game.jobs.activeMission.dropoffPos
+          : this.game.jobs.activeMission.pickupPos;
+
+      if (dest) {
+        const mx = center + dest.x * mapScale;
+        const mz = center + dest.z * mapScale;
+
+        const pulse = 8 + Math.sin(Date.now() * 0.008) * 3;
+        ctx.fillStyle = '#ffea00';
+        ctx.beginPath();
+        ctx.moveTo(mx, mz - pulse);
+        ctx.lineTo(mx + pulse, mz);
+        ctx.lineTo(mx, mz + pulse);
+        ctx.lineTo(mx - pulse, mz);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffea00';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('★ MISSION OBJECTIVE', mx, mz - pulse - 4);
+      }
+    }
+
+    // 7. Player Indicator (Bright Cyan Pulsing Ring & Heading Arrow)
+    const px = center + playerPos.x * mapScale;
+    const pz = center + playerPos.z * mapScale;
+
+    const pRipple = 10 + (Date.now() % 1200) / 120;
+    ctx.strokeStyle = 'rgba(0, 240, 255, ' + (1 - pRipple / 20) + ')';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(px, pz, pRipple, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.save();
+    ctx.translate(px, pz);
+    const headingAngle = this.game.vehicleManager.activeVehicle
+      ? -this.game.vehicleManager.activeVehicle.group.rotation.y
+      : -this.game.player.heading;
+    ctx.rotate(headingAngle);
+
+    ctx.fillStyle = '#00f0ff';
+    ctx.beginPath();
+    ctx.moveTo(0, -9);
+    ctx.lineTo(6, 7);
+    ctx.lineTo(0, 3.5);
+    ctx.lineTo(-6, 7);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.fillStyle = '#00f0ff';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('YOU', px, pz - 14);
+
+    // 8. Scale Legend
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(16, size - 44, 180, 32);
+    ctx.strokeStyle = 'rgba(0, 240, 255, 0.4)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(16, size - 44, 180, 32);
+
+    ctx.fillStyle = '#cbd5e1';
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('MAP: 30,000m × 30,000m', 24, size - 28);
+    ctx.fillText('SCALE: 1cm ≈ 700m', 24, size - 16);
+  }
+
   // ------------------------------------------------------------
   // MINIMAP RENDERER
   // ------------------------------------------------------------
@@ -715,8 +1140,14 @@ class GameUI {
     const canvas = this.minimapCanvas;
     const size = canvas.width;
     const center = size / 2;
-    const scale = 0.28;
 
+    // If maximized, render the full 30,000 x 30,000 world map!
+    if (this.isMinimapMaximized) {
+      this.drawMaximizedWorldMap(ctx, size);
+      return;
+    }
+
+    const scale = 0.28;
     ctx.clearRect(0, 0, size, size);
 
     ctx.save();
@@ -730,7 +1161,7 @@ class GameUI {
     const playerPos = this.game.player.position;
 
     // Roads
-    const totalStep = this.game.world.blockSize + this.game.world.roadWidth;
+    const totalStep = 78;
     ctx.strokeStyle = '#22303c';
     ctx.lineWidth = 5;
 

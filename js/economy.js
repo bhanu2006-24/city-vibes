@@ -89,6 +89,81 @@ class EconomyManager {
     // Owned Vehicles
     this.ownedVehicles = ['sedan'];
 
+    // 24/7 SuperMart & Convenience Store Catalog
+    this.storeCatalog = {
+      medkit: {
+        id: 'medkit',
+        name: 'Military Field Medkit',
+        icon: '💊',
+        price: 150,
+        desc: 'Instantly restores +60 HP health.',
+        apply: () => {
+          this.game.player.heal(60);
+          if (window.soundManager) window.soundManager.playCash();
+          this.game.ui.showNotification('💊 Used Field Medkit: +60 HP restored!', 'success');
+        }
+      },
+      body_armor: {
+        id: 'body_armor',
+        name: 'Kevlar Tactical Vest',
+        icon: '🛡️',
+        price: 350,
+        desc: 'Equips 100 Armor shielding to absorb gunfire & damage.',
+        apply: () => {
+          this.game.player.addArmor(100);
+          if (window.soundManager) window.soundManager.playCash();
+          this.game.ui.showNotification('🛡️ Equipped Kevlar Vest: +100 Armor active!', 'success');
+        }
+      },
+      energy_drink: {
+        id: 'energy_drink',
+        name: 'Hyper Nitro Energy Can',
+        icon: '⚡',
+        price: 40,
+        desc: 'Max stamina boost: Run at top sprint speed.',
+        apply: () => {
+          this.game.player.runSpeed = 14.5;
+          setTimeout(() => { if (this.game.player) this.game.player.runSpeed = 11.5; }, 20000);
+          if (window.soundManager) window.soundManager.playCash();
+          this.game.ui.showNotification('⚡ Drank Nitro Energy: Hyper Speed boost active for 20s!', 'info');
+        }
+      },
+      repair_kit: {
+        id: 'repair_kit',
+        name: 'Roadside Repair Toolkit',
+        icon: '🔧',
+        price: 250,
+        desc: 'Instantly fixes your current car condition to 100%.',
+        apply: () => {
+          const v = this.game.vehicleManager.activeVehicle;
+          if (v) {
+            v.condition = 100;
+            this.game.ui.showNotification('🔧 Vehicle repaired to 100% condition!', 'success');
+          } else {
+            this.game.ui.showNotification('🔧 Repair kit saved in inventory.', 'info');
+          }
+        }
+      },
+      smoke_grenade: {
+        id: 'smoke_grenade',
+        name: 'Tactical Smoke Canister',
+        icon: '🧨',
+        price: 500,
+        desc: 'Deploys dense smoke screen to evade and break police line-of-sight.',
+        apply: () => {
+          if (this.game.player.wantedStars > 0) {
+            this.game.player.wantedStars = Math.max(0, this.game.player.wantedStars - 1);
+            this.game.ui.updateWantedHUD(this.game.player.wantedStars);
+            this.game.ui.showNotification('💨 Smoke Canister deployed! Police lost track of you (-1 Star)!', 'success');
+          } else {
+            this.game.ui.showNotification('💨 Smoke deployed!', 'info');
+          }
+        }
+      }
+    };
+
+    this.robberyCooldowns = {};
+
     // Owned Outfits
     this.ownedOutfits = ['casual'];
 
@@ -403,6 +478,114 @@ class EconomyManager {
       }
       return false;
     }
+  }
+
+  // ------------------------------------------------------------
+  // CONVENIENCE STORE & HEIST SYSTEM
+  // ------------------------------------------------------------
+
+  buyStoreItem(itemId) {
+    const item = this.storeCatalog[itemId];
+    if (!item) return false;
+
+    if (this.cash >= item.price) {
+      this.cash -= item.price;
+      this.updateBalanceUI();
+      item.apply();
+      this.saveState();
+      return true;
+    } else {
+      window.soundManager.playNotification(false);
+      this.game.ui.showNotification(`❌ Insufficient cash! Need $${item.price}`, 'error');
+      return false;
+    }
+  }
+
+  robStoreRegister(storeId = 'general') {
+    const now = Date.now();
+    const lastRobbed = this.robberyCooldowns[storeId] || 0;
+    if (now - lastRobbed < 45000) {
+      const waitSec = Math.ceil((45000 - (now - lastRobbed)) / 1000);
+      this.game.ui.showNotification(`⚠️ Register is empty! Cleaned out recently. Wait ${waitSec}s.`, 'warning');
+      return;
+    }
+
+    this.robberyCooldowns[storeId] = now;
+    const loot = 850 + Math.floor(Math.random() * 1650);
+    this.cash += loot;
+    this.updateBalanceUI();
+
+    // Trigger alarms & Police alert!
+    if (window.soundManager) {
+      window.soundManager.playAlarmSound();
+      window.soundManager.playCash();
+    }
+    this.game.player.addPoliceHeat(2); // 2 Stars
+
+    this.game.ui.showNotification(
+      `🚨 STORE ROBBERY! Grabbed +$${loot.toLocaleString()} cash from register! Clerk called 911! Escape the Police!`,
+      'error',
+      7000
+    );
+    this.saveState();
+  }
+
+  robBankVault() {
+    const now = Date.now();
+    const lastHeist = this.robberyCooldowns['bank_vault'] || 0;
+    if (now - lastHeist < 120000) {
+      this.game.ui.showNotification('⚠️ Bank vault is locked on emergency high-security lockdown!', 'warning');
+      return;
+    }
+
+    this.robberyCooldowns['bank_vault'] = now;
+    const loot = 15000 + Math.floor(Math.random() * 15000);
+    this.cash += loot;
+    this.updateBalanceUI();
+
+    if (window.soundManager) {
+      window.soundManager.playAlarmSound();
+      window.soundManager.playCash();
+    }
+    this.game.player.addPoliceHeat(4); // 4 Stars manhunt!
+
+    this.game.ui.showNotification(
+      `🏦 MAJOR HEIST: Cracked First National Bank Vault! Scored +$${loot.toLocaleString()} cash! 4-STAR POLICE MANHUNT!`,
+      'error',
+      8000
+    );
+    this.saveState();
+  }
+
+  fastTravelTaxi(targetCityKey) {
+    const world = this.game.world;
+    if (!world || !world.cities || !world.cities[targetCityKey]) return;
+
+    const fee = 200;
+    if (this.cash < fee) {
+      this.game.ui.showNotification('❌ Need $200 for Taxi cab fare!', 'error');
+      return;
+    }
+
+    this.cash -= fee;
+    this.updateBalanceUI();
+
+    const city = world.cities[targetCityKey];
+    const spawnPos = city.center.clone().add(new THREE.Vector3(0, 1.2, 12));
+
+    if (this.game.vehicleManager.activeVehicle) {
+      this.game.vehicleManager.activeVehicle.group.position.copy(spawnPos);
+      this.game.vehicleManager.activeVehicle.speed = 0;
+    } else {
+      this.game.player.setPosition(spawnPos);
+    }
+
+    window.soundManager.playNotification(true);
+    this.game.ui.closeAllModals();
+    if (this.game.ui.isPhoneOpen) this.game.ui.togglePhone();
+
+    this.game.ui.showCityWelcome(city.name, city.tagline);
+    this.game.ui.showNotification(`🚖 Cab ride completed: Arrived at ${city.name} (-$${fee})`, 'info', 5000);
   }
 
   // ------------------------------------------------------------

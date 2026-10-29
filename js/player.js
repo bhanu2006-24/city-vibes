@@ -31,6 +31,8 @@ class Player {
     this.maxHealth = 100;
     this.health = 100;
     this.armor = 0;
+    this.maxArmor = 100;
+    this.isBusted = false;
 
     // Police Heat / Wanted Level (0 to 5 Stars)
     this.wantedStars = 0;
@@ -604,6 +606,66 @@ class Player {
   setPosition(pos) {
     this.position.copy(pos);
     this.meshGroup.position.copy(pos);
+  }
+
+  takeDamage(amount, source = 'generic') {
+    if (this.isBusted) return;
+
+    let dmg = amount;
+    // Armor absorbs damage first
+    if (this.armor > 0) {
+      if (this.armor >= dmg) {
+        this.armor -= dmg;
+        dmg = 0;
+      } else {
+        dmg -= this.armor;
+        this.armor = 0;
+      }
+    }
+
+    this.health = Math.max(0, this.health - dmg);
+    if (window.soundManager) window.soundManager.playTaserSound();
+    if (window.gameUI) window.gameUI.updateHUD();
+
+    // Cops down player's health to <= 10% -> CAPTURE (BUSTED!)
+    if (this.wantedStars >= 1 && this.health <= 10) {
+      this.health = 10;
+      if (window.game && !this.isBusted) {
+        window.game.triggerBustedSequence();
+      }
+    } else if (this.health <= 0) {
+      if (window.game && !this.isBusted) {
+        window.game.triggerWastedSequence();
+      }
+    }
+  }
+
+  heal(amount) {
+    this.health = Math.min(this.maxHealth, this.health + amount);
+    if (window.gameUI) window.gameUI.updateHUD();
+  }
+
+  addArmor(amount) {
+    this.armor = Math.min(this.maxArmor, (this.armor || 0) + amount);
+    if (window.gameUI) window.gameUI.updateHUD();
+  }
+
+  respawnAt(pos) {
+    this.health = this.maxHealth;
+    this.armor = 0;
+    this.wantedStars = 0;
+    this.isBusted = false;
+    this.isWeaponDrawn = false;
+    this.isConcealed = true;
+    this.currentWeaponKey = 'fists';
+    this.velocity.set(0, 0, 0);
+    this.setPosition(pos);
+    this.buildFpsViewModel();
+    this.updateWeaponVisibility();
+    if (window.gameUI) {
+      window.gameUI.updateHUD();
+      window.gameUI.updateHolsterHUD(false);
+    }
   }
 
   // ------------------------------------------------------------

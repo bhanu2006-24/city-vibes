@@ -82,11 +82,12 @@ class CityGame {
     this.world.generate();
 
     // 2. Vehicles
-    this.vehicleManager = new VehicleManager(this.scene, this.world);
+    this.vehicleManager = new VehicleManager(this.scene, this.world, this);
     this.vehicleManager.initDefaultVehicles();
 
     // 3. Pedestrians & Assassin Targets
     this.pedestrianManager = new PedestrianManager(this.scene, this.world);
+    this.pedestrianManager.game = this;
     this.pedestrianManager.init();
 
     // 4. Player Character
@@ -138,7 +139,7 @@ class CityGame {
       lastMouseX = e.clientX;
       lastMouseY = e.clientY;
 
-      if (e.target.closest('#smartphone-modal') || e.target.closest('.game-modal')) {
+      if (e.target.closest('#smartphone-modal') || e.target.closest('.game-modal') || (this.ui && this.ui.isMinimapMaximized)) {
         return;
       }
 
@@ -158,7 +159,7 @@ class CityGame {
       }
 
       // Request pointer lock on click if desired
-      if (!this.isPointerLocked && !this.ui.isPhoneOpen && !this.ui.activeModal) {
+      if (!this.isPointerLocked && !this.ui.isPhoneOpen && !this.ui.activeModal && !this.ui.isMinimapMaximized) {
         try {
           this.renderer.domElement.requestPointerLock();
         } catch (err) {}
@@ -211,7 +212,17 @@ class CityGame {
       }
 
       // Interaction key ('E' or 'F')
-      if (code === 'KeyE' || key === 'e' || code === 'KeyF' || key === 'f') {
+      if (code === 'KeyF' || key === 'f') {
+        const nearSpot = this.world.getNearestInteractive(this.player.position, 6.0);
+        if (nearSpot && nearSpot.action === 'open_supermart') {
+          this.economy.robStoreRegister(this.world.currentCityId);
+          return;
+        } else if (nearSpot && nearSpot.action === 'open_bank') {
+          this.economy.robBankVault();
+          return;
+        }
+        this.handleInteraction();
+      } else if (code === 'KeyE' || key === 'e') {
         this.handleInteraction();
       }
 
@@ -287,8 +298,16 @@ class CityGame {
         }
       }
 
-      // Escape key to close modals/phone/camera
+      // Toggle Minimap Full World Map ('KeyM')
+      if (code === 'KeyM' || key === 'm') {
+        this.ui.toggleMinimapMaximized();
+      }
+
+      // Escape key to close modals/phone/camera/minimap
       if (code === 'Escape' || key === 'escape') {
+        if (this.ui.isMinimapMaximized) {
+          this.ui.toggleMinimapMaximized(false);
+        }
         this.ui.closeAllModals();
         if (this.cameraSystem.isActive) this.cameraSystem.toggleCamera();
         if (this.ui.isPhoneOpen) this.ui.togglePhone();
@@ -362,11 +381,80 @@ class CityGame {
         this.ui.openArmoryModal();
       } else if (nearSpot.action === 'open_mechanic') {
         this.ui.openMechanicModal();
+      } else if (nearSpot.action === 'open_supermart') {
+        this.ui.openSuperMartModal();
+      } else if (nearSpot.action === 'open_bank') {
+        this.economy.robBankVault();
       } else if (nearSpot.action === 'interact_property') {
         this.ui.openPhoneApp('realestate');
         if (!this.ui.isPhoneOpen) this.ui.togglePhone();
       }
     }
+  }
+
+  triggerBustedSequence() {
+    if (this.player.isBusted) return;
+    this.player.isBusted = true;
+
+    // Exit vehicle if driving
+    if (this.vehicleManager.activeVehicle) {
+      this.vehicleManager.exitVehicle(this.player);
+    }
+
+    if (window.soundManager) {
+      window.soundManager.playHandcuffsSound();
+      window.soundManager.playBustedJingle();
+    }
+
+    // Deduct bail/fine
+    const fine = Math.min(this.economy.cash, 1200);
+    this.economy.cash -= fine;
+    this.economy.updateBalanceUI();
+
+    this.ui.showBustedScreen();
+
+    // Clear police pursuit
+    if (this.pedestrianManager) {
+      this.pedestrianManager.removePoliceCruiser();
+    }
+
+    setTimeout(() => {
+      this.ui.hideBustedScreen();
+      // Respawn outside Central Station / Hospital
+      const respawnPos = new THREE.Vector3(0, 1.2, 20);
+      this.player.respawnAt(respawnPos);
+      this.ui.showNotification('⚖️ Released from Central Police Precinct. Weapons confiscated. Civilian cover restored.', 'info', 6000);
+    }, 4000);
+  }
+
+  triggerWastedSequence() {
+    if (this.player.isBusted) return;
+    this.player.isBusted = true;
+
+    if (this.vehicleManager.activeVehicle) {
+      this.vehicleManager.exitVehicle(this.player);
+    }
+
+    if (window.soundManager) {
+      window.soundManager.playNotification(false);
+    }
+
+    const hospitalBill = Math.min(this.economy.cash, 500);
+    this.economy.cash -= hospitalBill;
+    this.economy.updateBalanceUI();
+
+    this.ui.showWastedScreen();
+
+    if (this.pedestrianManager) {
+      this.pedestrianManager.removePoliceCruiser();
+    }
+
+    setTimeout(() => {
+      this.ui.hideWastedScreen();
+      const hospPos = new THREE.Vector3(-39, 1.2, 15);
+      this.player.respawnAt(hospPos);
+      this.ui.showNotification('🏥 Discharged from St. Jude Hospital ER with full health (-$500).', 'info', 6000);
+    }, 4000);
   }
 
   onWindowResize() {
@@ -389,8 +477,11 @@ class CityGame {
     // 3. Update Pedestrians, Traffic & Assassin Targets
     this.pedestrianManager.update(delta);
 
-    // 4. Update World Visuals
-    this.world.update(delta);
+    // 4. Update World Visuals & Dynamic City Streaming (Lag-free)
+    const playerPos = this.vehicleManager.activeVehicle
+      ? this.vehicleManager.activeVehicle.group.position
+      : this.player.position;
+    this.world.update(delta, playerPos);
 
     // 5. Update Career & Mission Logic
     this.jobs.update(delta);
@@ -422,7 +513,8 @@ class CityGame {
 
     const nearVehicle = this.vehicleManager.getNearestVehicle(this.player.position, 4.2);
     if (nearVehicle) {
-      this.ui.showInteractionPrompt(`[E] Drive ${nearVehicle.spec.name}`);
+      const actionText = nearVehicle.isTrafficCar ? `[E] Commandeer / Hijack ${nearVehicle.spec.name}` : `[E] Drive ${nearVehicle.spec.name}`;
+      this.ui.showInteractionPrompt(actionText);
       return;
     }
 
@@ -430,6 +522,14 @@ class CityGame {
     if (nearSpot) {
       if (nearSpot.action === 'teleport' || nearSpot.action === 'teleport_heal') {
         this.ui.showInteractionPrompt(`[E] ${nearSpot.name}`);
+        return;
+      }
+      if (nearSpot.action === 'open_supermart') {
+        this.ui.showInteractionPrompt(`[E] Enter Store | [F] Rob Cashier`);
+        return;
+      }
+      if (nearSpot.action === 'open_bank') {
+        this.ui.showInteractionPrompt(`[E] or [F] Crack Bank Vault Heist`);
         return;
       }
       this.ui.showInteractionPrompt(`[E] Enter ${nearSpot.name}`);

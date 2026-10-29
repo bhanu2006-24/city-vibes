@@ -1,886 +1,1053 @@
 // ============================================================
-// CITY VIBES - 3D PROCEDURAL EXPANDED WORLD (6 CITIES/DISTRICTS)
-// Metropolis, Vice Beach, Industrial Docks, Suburbs, Badlands & Chinatown
-// With Rooftop Sniper Vantage Points & Safehouse Interiors!
+// CITY VIBES - 30,000 x 30,000 MULTI-CITY WORLD WITH STREAMING
+// 8 Distinct Major Cities, High-Speed Highways, Ocean Boundary,
+// Rooftop Sniper Perches, Safehouse Interiors & Enterable Shops!
 // ============================================================
 
 class CityWorld {
   constructor(scene) {
     this.scene = scene;
-    this.colliders = []; // Bounding boxes for collision detection
-    this.interactiveSpots = []; // Landmarks, elevators, interiors, shops
+    this.worldExtent = 30000; // -15000 to +15000
+    this.seaBoundary = 14500; // Ocean edge boundary
+    this.colliders = []; // Active colliders (dynamically streamed)
+    this.interactiveSpots = []; // Active interactive spots
     this.streetLights = [];
-    this.dayNightCycle = 0.3;
-    this.citySize = 1400; // -700 to +700
-    this.blockSize = 60;
-    this.roadWidth = 18;
-    this.gridBlocks = 11; // -5 to +5 blocks in X and Z
+    this.currentCityId = 'metropolis';
+    this.streamingRadius = 2200; // Load city within 2.2km
+
+    // 8 Major Cities / Regions across the 30,000x30,000 territory
+    this.cities = {
+      metropolis: {
+        id: 'metropolis',
+        name: 'Downtown Metropolis',
+        tagline: 'Skyscraper Core & Citadel Tower',
+        center: new THREE.Vector3(0, 0, 0),
+        radius: 1100,
+        color: 0x00f0ff,
+        group: new THREE.Group(),
+        colliders: [],
+        interactives: [],
+        loaded: false
+      },
+      vice_beach: {
+        id: 'vice_beach',
+        name: 'Vice Beach & Marina',
+        tagline: 'Tropical Sands, Luxury Villas & Palms',
+        center: new THREE.Vector3(3400, 0, 600),
+        radius: 1100,
+        color: 0xff00bb,
+        group: new THREE.Group(),
+        colliders: [],
+        interactives: [],
+        loaded: false
+      },
+      liberty_port: {
+        id: 'liberty_port',
+        name: 'Liberty Industrial Port',
+        tagline: 'Shipping Containers, Cargo Cranes & Warehouses',
+        center: new THREE.Vector3(-3200, 0, -3200),
+        radius: 1100,
+        color: 0xe67e22,
+        group: new THREE.Group(),
+        colliders: [],
+        interactives: [],
+        loaded: false
+      },
+      maple_suburbs: {
+        id: 'maple_suburbs',
+        name: 'Maple Valley Suburbs',
+        tagline: 'Peaceful Cul-de-sacs, Lawns & Family Homes',
+        center: new THREE.Vector3(3200, 0, 3400),
+        radius: 1100,
+        color: 0x2ecc71,
+        group: new THREE.Group(),
+        colliders: [],
+        interactives: [],
+        loaded: false
+      },
+      badlands: {
+        id: 'badlands',
+        name: 'Red Rock Badlands',
+        tagline: 'Arid Sandstone Mesas & Outlaw Scrapyards',
+        center: new THREE.Vector3(-3600, 0, 3600),
+        radius: 1100,
+        color: 0xd35400,
+        group: new THREE.Group(),
+        colliders: [],
+        interactives: [],
+        loaded: false
+      },
+      chinatown: {
+        id: 'chinatown',
+        name: 'Neo-Chinatown District',
+        tagline: 'Red Lanterns, Pagodas & Night Markets',
+        center: new THREE.Vector3(600, 0, -3600),
+        radius: 1100,
+        color: 0xe74c3c,
+        group: new THREE.Group(),
+        colliders: [],
+        interactives: [],
+        loaded: false
+      },
+      las_palmas: {
+        id: 'las_palmas',
+        name: 'Las Palmas Casino Strip',
+        tagline: 'Golden Towers, Neon Resorts & Fountains',
+        center: new THREE.Vector3(-4200, 0, 1000),
+        radius: 1100,
+        color: 0xf1c40f,
+        group: new THREE.Group(),
+        colliders: [],
+        interactives: [],
+        loaded: false
+      },
+      alpine_pines: {
+        id: 'alpine_pines',
+        name: 'Alpine Pines Peak',
+        tagline: 'Snowy Forests, Chalets & Mountain Vistas',
+        center: new THREE.Vector3(1200, 0, 5000),
+        radius: 1100,
+        color: 0x1abc9c,
+        group: new THREE.Group(),
+        colliders: [],
+        interactives: [],
+        loaded: false
+      }
+    };
   }
 
   generate() {
-    this.createGroundAndRegions();
-    this.createRoadsAndIntersections();
-    this.createDistrictsAndBuildings();
-    this.createStreetFurniture();
-    this.createKeyLandmarks();
-    this.createRooftopSniperVantagePoints();
-    this.createPenthouseInterior();
-    this.createVegetation();
+    this.createGlobalOceanAndTerrain();
+    this.createTransArchipelagoHighways();
+
+    // Attach city groups to scene
+    Object.values(this.cities).forEach(city => {
+      this.scene.add(city.group);
+    });
+
+    // Generate each city's procedural architecture
+    this.buildMetropolisCity();
+    this.buildViceBeachCity();
+    this.buildLibertyPortCity();
+    this.buildMapleSuburbsCity();
+    this.buildBadlandsCity();
+    this.buildChinatownCity();
+    this.buildLasPalmasCity();
+    this.buildAlpinePinesCity();
+
+    // Initial streaming update around player spawn (0, 0)
+    this.updateStreaming(new THREE.Vector3(0, 1, 10));
   }
 
-  createGroundAndRegions() {
-    // 1. Central Metropolis Grass Terrain
-    const groundGeo = new THREE.PlaneGeometry(this.citySize, this.citySize);
-    const groundMat = new THREE.MeshLambertMaterial({ color: 0x162215 });
-    const ground = new THREE.Mesh(groundGeo, groundMat);
-    ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -0.05;
-    ground.receiveShadow = true;
-    this.scene.add(ground);
+  // ------------------------------------------------------------
+  // GLOBAL OCEAN & TERRAIN (30,000 x 30,000)
+  // ------------------------------------------------------------
 
-    // 2. Vice Coast Beach & Ocean Bay (East: X > 150)
-    const oceanGeo = new THREE.PlaneGeometry(600, this.citySize);
+  createGlobalOceanAndTerrain() {
+    // 1. Massive Surrounding Ocean Plane (32,000 x 32,000)
+    const oceanGeo = new THREE.PlaneGeometry(32000, 32000);
     const oceanMat = new THREE.MeshPhongMaterial({
-      color: 0x0b3c5d,
+      color: 0x092b45,
       transparent: true,
-      opacity: 0.88,
-      shininess: 95
+      opacity: 0.92,
+      shininess: 90
     });
-    const ocean = new THREE.Mesh(oceanGeo, oceanMat);
-    ocean.rotation.x = -Math.PI / 2;
-    ocean.position.set(550, -0.15, 0);
-    this.scene.add(ocean);
+    this.oceanMesh = new THREE.Mesh(oceanGeo, oceanMat);
+    this.oceanMesh.rotation.x = -Math.PI / 2;
+    this.oceanMesh.position.y = -0.2;
+    this.scene.add(this.oceanMesh);
 
-    // Sandy Shore strip
-    const sandGeo = new THREE.PlaneGeometry(120, this.citySize);
-    const sandMat = new THREE.MeshLambertMaterial({ color: 0xdfc27d });
-    const sand = new THREE.Mesh(sandGeo, sandMat);
-    sand.rotation.x = -Math.PI / 2;
-    sand.position.set(240, 0.05, 0);
-    this.scene.add(sand);
+    // 2. Central Mainland Grass Foundation Plane (18,000 x 18,000)
+    const landGeo = new THREE.PlaneGeometry(18000, 18000);
+    const landMat = new THREE.MeshLambertMaterial({ color: 0x162215 });
+    const land = new THREE.Mesh(landGeo, landMat);
+    land.rotation.x = -Math.PI / 2;
+    land.position.y = -0.05;
+    land.receiveShadow = true;
+    this.scene.add(land);
 
-    // 3. Badlands Desert Outskirts (North-West: X < -180, Z > 180)
-    const desertGeo = new THREE.PlaneGeometry(500, 500);
-    const desertMat = new THREE.MeshLambertMaterial({ color: 0xb5651d }); // reddish desert sand
-    const desert = new THREE.Mesh(desertGeo, desertMat);
-    desert.rotation.x = -Math.PI / 2;
-    desert.position.set(-350, 0.02, 350);
-    this.scene.add(desert);
-
-    // Canyon rocks in Desert
-    for (let r = 0; r < 14; r++) {
-      const rockGeo = new THREE.DodecahedronGeometry(8 + Math.random() * 12, 1);
-      const rockMat = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
-      const rock = new THREE.Mesh(rockGeo, rockMat);
-      const rx = -250 - Math.random() * 200;
-      const rz = 220 + Math.random() * 240;
-      rock.position.set(rx, 4, rz);
-      rock.scale.set(1.4, 0.9, 1.4);
-      this.scene.add(rock);
-      this.addCollider(rx, rz, 14, 14);
+    // Coastline Boundary Warning Buoys along the ocean edge
+    const buoyMat = new THREE.MeshBasicMaterial({ color: 0xff3b30 });
+    const buoyGeo = new THREE.CylinderGeometry(4, 4, 12, 12);
+    for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 8) {
+      const bx = Math.cos(angle) * this.seaBoundary;
+      const bz = Math.sin(angle) * this.seaBoundary;
+      const buoy = new THREE.Mesh(buoyGeo, buoyMat);
+      buoy.position.set(bx, 5, bz);
+      this.scene.add(buoy);
     }
   }
 
-  createRoadsAndIntersections() {
-    const totalStep = this.blockSize + this.roadWidth; // 78
-    const halfSpan = Math.floor(this.gridBlocks / 2) * totalStep;
+  // ------------------------------------------------------------
+  // TRANS-ARCHIPELAGO HIGHWAYS CONNECTING ALL 8 CITIES
+  // ------------------------------------------------------------
 
-    const roadMat = new THREE.MeshLambertMaterial({ color: 0x222225 });
-    const sidewalkMat = new THREE.MeshLambertMaterial({ color: 0x757a7d });
-    const yellowMat = new THREE.MeshBasicMaterial({ color: 0xe8b82a });
+  createTransArchipelagoHighways() {
+    const highwayMat = new THREE.MeshLambertMaterial({ color: 0x1c1e21 });
+    const yellowStripe = new THREE.MeshBasicMaterial({ color: 0xe8b82a });
+    const metro = this.cities.metropolis.center;
 
-    for (let i = -Math.floor(this.gridBlocks / 2); i <= Math.floor(this.gridBlocks / 2); i++) {
-      const coord = i * totalStep;
+    // Connect Downtown Metropolis to all 7 outer cities with broad 4-lane expressways
+    const outerCities = ['vice_beach', 'liberty_port', 'maple_suburbs', 'badlands', 'chinatown', 'las_palmas', 'alpine_pines'];
 
-      // Vertical Roads (North-South)
-      const roadVGeo = new THREE.PlaneGeometry(this.roadWidth, this.citySize);
-      const roadV = new THREE.Mesh(roadVGeo, roadMat);
-      roadV.rotation.x = -Math.PI / 2;
-      roadV.position.set(coord, 0.01, 0);
-      roadV.receiveShadow = true;
-      this.scene.add(roadV);
+    outerCities.forEach(cityKey => {
+      const target = this.cities[cityKey].center;
+      const dir = target.clone().sub(metro);
+      const dist = dir.length();
+      const mid = metro.clone().add(dir.clone().multiplyScalar(0.5));
+      const angle = Math.atan2(dir.x, dir.z);
 
-      // Horizontal Roads (East-West)
-      const roadHGeo = new THREE.PlaneGeometry(this.citySize, this.roadWidth);
-      const roadH = new THREE.Mesh(roadHGeo, roadMat);
-      roadH.rotation.x = -Math.PI / 2;
-      roadH.position.set(0, 0.01, coord);
-      roadH.receiveShadow = true;
-      this.scene.add(roadH);
+      // Highway surface (24m wide)
+      const roadGeo = new THREE.PlaneGeometry(24, dist);
+      const road = new THREE.Mesh(roadGeo, highwayMat);
+      road.rotation.x = -Math.PI / 2;
+      road.rotation.z = -angle;
+      road.position.set(mid.x, 0.02, mid.z);
+      road.receiveShadow = true;
+      this.scene.add(road);
 
-      // Double yellow center stripes
-      const markVGeo = new THREE.PlaneGeometry(0.3, this.citySize);
-      const markV1 = new THREE.Mesh(markVGeo, yellowMat);
-      markV1.rotation.x = -Math.PI / 2;
-      markV1.position.set(coord - 0.25, 0.02, 0);
-      this.scene.add(markV1);
+      // Double yellow center median line
+      const stripeGeo = new THREE.PlaneGeometry(0.5, dist);
+      const stripe = new THREE.Mesh(stripeGeo, yellowStripe);
+      stripe.rotation.x = -Math.PI / 2;
+      stripe.rotation.z = -angle;
+      stripe.position.set(mid.x, 0.03, mid.z);
+      this.scene.add(stripe);
+    });
+  }
 
-      const markV2 = new THREE.Mesh(markVGeo, yellowMat);
-      markV2.rotation.x = -Math.PI / 2;
-      markV2.position.set(coord + 0.25, 0.02, 0);
-      this.scene.add(markV2);
+  // ------------------------------------------------------------
+  // DYNAMIC CITY STREAMING (ZERO LAG OPTIMIZATION)
+  // ------------------------------------------------------------
 
-      const markHGeo = new THREE.PlaneGeometry(this.citySize, 0.3);
-      const markH1 = new THREE.Mesh(markHGeo, yellowMat);
-      markH1.rotation.x = -Math.PI / 2;
-      markH1.position.set(0, 0.02, coord - 0.25);
-      this.scene.add(markH1);
+  updateStreaming(playerPos) {
+    let closestCity = null;
+    let minDistance = Infinity;
 
-      const markH2 = new THREE.Mesh(markHGeo, yellowMat);
-      markH2.rotation.x = -Math.PI / 2;
-      markH2.position.set(0, 0.02, coord + 0.25);
-      this.scene.add(markH2);
+    // 1. Identify which city the player is inside or closest to
+    Object.values(this.cities).forEach(city => {
+      const d = playerPos.distanceTo(city.center);
+      if (d < minDistance) {
+        minDistance = d;
+        closestCity = city;
+      }
+    });
+
+    // 2. Stream in only cities within streamingRadius (2200m)
+    this.colliders = [];
+    this.interactiveSpots = [];
+
+    Object.values(this.cities).forEach(city => {
+      const d = playerPos.distanceTo(city.center);
+      const isNear = d <= this.streamingRadius;
+
+      city.group.visible = isNear;
+
+      if (isNear) {
+        // Feed colliders and interactive spots for physics & raycasts
+        this.colliders.push(...city.colliders);
+        this.interactiveSpots.push(...city.interactives);
+      }
+    });
+
+    // 3. Detect city crossing & show Welcome Title Card
+    if (closestCity && closestCity.id !== this.currentCityId && minDistance < closestCity.radius) {
+      this.currentCityId = closestCity.id;
+      if (window.gameUI) {
+        window.gameUI.showCityWelcome(closestCity.name, closestCity.tagline);
+      }
+    }
+
+    return closestCity;
+  }
+
+  // Check sea boundary limit to prevent falling off the world
+  checkSeaBoundary(pos) {
+    let hitBoundary = false;
+    if (Math.abs(pos.x) > this.seaBoundary) {
+      pos.x = Math.sign(pos.x) * (this.seaBoundary - 5);
+      hitBoundary = true;
+    }
+    if (Math.abs(pos.z) > this.seaBoundary) {
+      pos.z = Math.sign(pos.z) * (this.seaBoundary - 5);
+      hitBoundary = true;
+    }
+    if (hitBoundary && window.gameUI) {
+      window.gameUI.showSeaWarning();
+    }
+    return hitBoundary;
+  }
+
+  // ------------------------------------------------------------
+  // CITY 1: DOWNTOWN METROPOLIS (Citadel, Hospital, Armory, SuperMart)
+  // ------------------------------------------------------------
+
+  buildMetropolisCity() {
+    const city = this.cities.metropolis;
+    const g = city.group;
+    const c = city.center;
+    const blockSize = 60;
+    const roadWidth = 18;
+    const totalStep = blockSize + roadWidth; // 78
+
+    // Internal City Street Grid (5x5 blocks)
+    this.createLocalGrid(g, c, 5, blockSize, roadWidth, 0x1f2428);
+
+    // 1. Citadel Skyscraper at center (0, 0)
+    this.buildCitadelTower(city, c.x + 39, c.z + 39);
+
+    // 2. St. Jude Hospital at (-1, 0)
+    this.buildHospital(city, c.x - 39, c.z + 39);
+
+    // 3. Luigi's Express Pizzeria at (1, 0)
+    this.buildPizzeria(city, c.x + 117, c.z + 39);
+
+    // 4. Metro Cab Depot at (0, 1)
+    this.buildTaxiDepot(city, c.x + 39, c.z + 117);
+
+    // 5. City Customs Garage at (-1, 1)
+    this.buildCustomsMechanicShop(city, c.x - 39, c.z + 117);
+
+    // 6. The Black Lotus Guild at (-2, -2)
+    this.buildAssassinGuild(city, c.x - 117, c.z - 117);
+
+    // 7. Apex Car Dealership at (1, 1)
+    this.buildCarDealership(city, c.x + 117, c.z + 117);
+
+    // 8. Urban Threads & Armory at (0, -1)
+    this.buildClothesAndArmoryShop(city, c.x + 39, c.z - 39);
+
+    // 9. NEW: 24/7 SuperMart & Convenience Store at (0, 0) plaza corner
+    this.buildSuperMart(city, c.x + 22, c.z + 20, 'Downtown 24/7 SuperMart');
+
+    // 10. NEW: First National Bank & Vault at (1, -1)
+    this.buildBankBuilding(city, c.x + 117, c.z - 39);
+
+    // Surrounding Downtown Skyscraper Towers
+    const towerHeights = [85, 110, 95, 130, 75, 100];
+    const towerCoords = [
+      [-117, 39], [117, -117], [-39, -117], [39, -117], [-117, -39]
+    ];
+    towerCoords.forEach((coord, idx) => {
+      const h = towerHeights[idx % towerHeights.length];
+      const tower = new THREE.Mesh(
+        new THREE.BoxGeometry(38, h, 38),
+        new THREE.MeshLambertMaterial({ color: 0x1a2634 })
+      );
+      tower.position.set(c.x + coord[0], h / 2 + 0.3, c.z + coord[1]);
+      g.add(tower);
+      this.addCityCollider(city, c.x + coord[0], c.z + coord[1], 38, 38);
+
+      // Neon accent
+      const neon = new THREE.Mesh(
+        new THREE.BoxGeometry(0.4, h - 4, 0.4),
+        new THREE.MeshBasicMaterial({ color: idx % 2 === 0 ? 0x00f0ff : 0xff00bb })
+      );
+      neon.position.set(c.x + coord[0] + 19, h / 2, c.z + coord[1] + 19);
+      g.add(neon);
+    });
+  }
+
+  // ------------------------------------------------------------
+  // CITY 2: VICE BEACH & MARINA (Luxury Villas, Palms, Boardwalk)
+  // ------------------------------------------------------------
+
+  buildViceBeachCity() {
+    const city = this.cities.vice_beach;
+    const g = city.group;
+    const c = city.center;
+
+    // Sandy beach terrain pad (800 x 800)
+    const sand = new THREE.Mesh(
+      new THREE.PlaneGeometry(900, 900),
+      new THREE.MeshLambertMaterial({ color: 0xecd599 })
+    );
+    sand.rotation.x = -Math.PI / 2;
+    sand.position.set(c.x, 0.05, c.z);
+    g.add(sand);
+
+    // Ocean bay water
+    const bayWater = new THREE.Mesh(
+      new THREE.PlaneGeometry(600, 900),
+      new THREE.MeshPhongMaterial({ color: 0x00b4d8, transparent: true, opacity: 0.85, shininess: 100 })
+    );
+    bayWater.rotation.x = -Math.PI / 2;
+    bayWater.position.set(c.x + 350, 0.1, c.z);
+    g.add(bayWater);
+
+    // Luxury Modern Beach Villas with swimming pools
+    const villaOffsets = [[-180, -180], [-180, 0], [-180, 180], [0, -180], [0, 180]];
+    villaOffsets.forEach(off => {
+      const vx = c.x + off[0];
+      const vz = c.z + off[1];
+      const villa = new THREE.Mesh(
+        new THREE.BoxGeometry(45, 14, 40),
+        new THREE.MeshPhongMaterial({ color: 0xffffff, shininess: 85 })
+      );
+      villa.position.set(vx, 7.3, vz);
+      g.add(villa);
+      this.addCityCollider(city, vx, vz, 45, 40);
+
+      // Turquoise Pool
+      const pool = new THREE.Mesh(
+        new THREE.BoxGeometry(20, 0.4, 25),
+        new THREE.MeshBasicMaterial({ color: 0x00f5d4 })
+      );
+      pool.position.set(vx + 26, 0.25, vz);
+      g.add(pool);
+    });
+
+    // Vice Beach 24/7 SuperMart
+    this.buildSuperMart(city, c.x - 60, c.z, 'Vice Beach MiniMart');
+
+    // Palm Trees along coastal boulevard
+    for (let p = -300; p <= 300; p += 60) {
+      this.createPalmTree(g, c.x + 120, c.z + p);
+    }
+  }
+
+  // ------------------------------------------------------------
+  // CITY 3: LIBERTY INDUSTRIAL PORT (Cargo Cranes & Containers)
+  // ------------------------------------------------------------
+
+  buildLibertyPortCity() {
+    const city = this.cities.liberty_port;
+    const g = city.group;
+    const c = city.center;
+
+    // Concrete industrial dock surface
+    const dockGround = new THREE.Mesh(
+      new THREE.PlaneGeometry(900, 900),
+      new THREE.MeshLambertMaterial({ color: 0x2b2e33 })
+    );
+    dockGround.rotation.x = -Math.PI / 2;
+    dockGround.position.set(c.x, 0.05, c.z);
+    g.add(dockGround);
+
+    // Giant Industrial Shipping Cranes (3 Cranes)
+    [-180, 0, 180].forEach(pz => {
+      const craneX = c.x + 160;
+      const craneZ = c.z + pz;
+
+      // Crane Mast
+      const mast = new THREE.Mesh(
+        new THREE.BoxGeometry(6, 48, 6),
+        new THREE.MeshLambertMaterial({ color: 0xf39c12 })
+      );
+      mast.position.set(craneX, 24, craneZ);
+      g.add(mast);
+      this.addCityCollider(city, craneX, craneZ, 6, 6);
+
+      // Crane Boom / Arm
+      const boom = new THREE.Mesh(
+        new THREE.BoxGeometry(45, 4, 5),
+        new THREE.MeshLambertMaterial({ color: 0xf39c12 })
+      );
+      boom.position.set(craneX - 15, 46, craneZ);
+      g.add(boom);
+    });
+
+    // Stacks of Shipping Containers (Red, Blue, Green, Yellow)
+    const containerColors = [0xc0392b, 0x2980b9, 0x27ae60, 0xf1c40f];
+    for (let row = -2; row <= 2; row++) {
+      for (let stack = 0; stack < 3; stack++) {
+        const cx = c.x - 120 + stack * 35;
+        const cz = c.z + row * 60;
+        const container = new THREE.Mesh(
+          new THREE.BoxGeometry(24, 7, 10),
+          new THREE.MeshLambertMaterial({ color: containerColors[(row + stack + 4) % 4] })
+        );
+        container.position.set(cx, 3.8, cz);
+        g.add(container);
+        this.addCityCollider(city, cx, cz, 24, 10);
+      }
+    }
+
+    // Heavy Freight Warehouse
+    const wh = new THREE.Mesh(
+      new THREE.BoxGeometry(70, 20, 100),
+      new THREE.MeshLambertMaterial({ color: 0x3d4451 })
+    );
+    wh.position.set(c.x - 220, 10, c.z);
+    g.add(wh);
+    this.addCityCollider(city, c.x - 220, c.z, 70, 100);
+  }
+
+  // ------------------------------------------------------------
+  // CITY 4: MAPLE VALLEY SUBURBS (Homes, Lawns & Chimneys)
+  // ------------------------------------------------------------
+
+  buildMapleSuburbsCity() {
+    const city = this.cities.maple_suburbs;
+    const g = city.group;
+    const c = city.center;
+
+    // Green lawn ground
+    const grass = new THREE.Mesh(
+      new THREE.PlaneGeometry(900, 900),
+      new THREE.MeshLambertMaterial({ color: 0x27ae60 })
+    );
+    grass.rotation.x = -Math.PI / 2;
+    grass.position.set(c.x, 0.05, c.z);
+    g.add(grass);
+
+    // Charming Suburban Houses with roofs & brick chimneys
+    const houseOffsets = [
+      [-150, -150], [-150, 0], [-150, 150],
+      [0, -150], [0, 150],
+      [150, -150], [150, 0], [150, 150]
+    ];
+    houseOffsets.forEach((off, idx) => {
+      const hx = c.x + off[0];
+      const hz = c.z + off[1];
+
+      // House main body
+      const body = new THREE.Mesh(
+        new THREE.BoxGeometry(26, 9, 24),
+        new THREE.MeshLambertMaterial({ color: 0xf5f6fa })
+      );
+      body.position.set(hx, 4.8, hz);
+      g.add(body);
+      this.addCityCollider(city, hx, hz, 26, 24);
+
+      // Pitched roof
+      const roof = new THREE.Mesh(
+        new THREE.ConeGeometry(18, 6.5, 4),
+        new THREE.MeshLambertMaterial({ color: [0x8b2500, 0x34495e, 0x78553d][idx % 3] })
+      );
+      roof.rotation.y = Math.PI / 4;
+      roof.position.set(hx, 12, hz);
+      g.add(roof);
+
+      // Brick Chimney
+      const chimney = new THREE.Mesh(
+        new THREE.BoxGeometry(2, 6, 2),
+        new THREE.MeshLambertMaterial({ color: 0x962d2d })
+      );
+      chimney.position.set(hx + 7, 13, hz + 5);
+      g.add(chimney);
+    });
+
+    // Suburb 24/7 SuperMart
+    this.buildSuperMart(city, c.x, c.z, 'Maple Suburbs Grocery');
+  }
+
+  // ------------------------------------------------------------
+  // CITY 5: RED ROCK BADLANDS (Desert Mesas & Outlaw Scrapyard)
+  // ------------------------------------------------------------
+
+  buildBadlandsCity() {
+    const city = this.cities.badlands;
+    const g = city.group;
+    const c = city.center;
+
+    // Red desert sand terrain
+    const desert = new THREE.Mesh(
+      new THREE.PlaneGeometry(900, 900),
+      new THREE.MeshLambertMaterial({ color: 0xb5651d })
+    );
+    desert.rotation.x = -Math.PI / 2;
+    desert.position.set(c.x, 0.05, c.z);
+    g.add(desert);
+
+    // Towering Red Sandstone Canyon Rock Mesas
+    for (let r = 0; r < 8; r++) {
+      const angle = (r / 8) * Math.PI * 2;
+      const rx = c.x + Math.cos(angle) * 240;
+      const rz = c.z + Math.sin(angle) * 240;
+      const rock = new THREE.Mesh(
+        new THREE.DodecahedronGeometry(18 + Math.random() * 10, 1),
+        new THREE.MeshLambertMaterial({ color: 0x8b4513 })
+      );
+      rock.position.set(rx, 14, rz);
+      rock.scale.set(1.5, 1.2, 1.5);
+      g.add(rock);
+      this.addCityCollider(city, rx, rz, 26, 26);
+    }
+
+    // Outlaw Scrapyard Garage & Diner
+    const diner = new THREE.Mesh(
+      new THREE.BoxGeometry(45, 10, 30),
+      new THREE.MeshLambertMaterial({ color: 0x7f8c8d })
+    );
+    diner.position.set(c.x, 5.3, c.z);
+    g.add(diner);
+    this.addCityCollider(city, c.x, c.z, 45, 30);
+
+    // Route 66 Desert Mart
+    this.buildSuperMart(city, c.x + 60, c.z, 'Route 66 Desert Outpost');
+  }
+
+  // ------------------------------------------------------------
+  // CITY 6: NEO-CHINATOWN (Pagodas, Lanterns & Night Bazaar)
+  // ------------------------------------------------------------
+
+  buildChinatownCity() {
+    const city = this.cities.chinatown;
+    const g = city.group;
+    const c = city.center;
+
+    // Dark slate cobblestone ground
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(900, 900),
+      new THREE.MeshLambertMaterial({ color: 0x2c3e50 })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.set(c.x, 0.05, c.z);
+    g.add(ground);
+
+    // Traditional Pagoda Gate Archway
+    const archPillarL = new THREE.Mesh(new THREE.BoxGeometry(3, 16, 3), new THREE.MeshLambertMaterial({ color: 0xc0392b }));
+    archPillarL.position.set(c.x - 14, 8, c.z - 80);
+    g.add(archPillarL);
+
+    const archPillarR = new THREE.Mesh(new THREE.BoxGeometry(3, 16, 3), new THREE.MeshLambertMaterial({ color: 0xc0392b }));
+    archPillarR.position.set(c.x + 14, 8, c.z - 80);
+    g.add(archPillarR);
+
+    const archRoof = new THREE.Mesh(new THREE.ConeGeometry(22, 6, 4), new THREE.MeshLambertMaterial({ color: 0xe67e22 }));
+    archRoof.rotation.y = Math.PI / 4;
+    archRoof.position.set(c.x, 18, c.z - 80);
+    g.add(archRoof);
+
+    // Chinatown Dim Sum & Tea Pavilions
+    [-120, 120].forEach(px => {
+      const pav = new THREE.Mesh(new THREE.BoxGeometry(40, 18, 40), new THREE.MeshLambertMaterial({ color: 0x962d2d }));
+      pav.position.set(c.x + px, 9.3, c.z);
+      g.add(pav);
+      this.addCityCollider(city, c.x + px, c.z, 40, 40);
+
+      // Glowing red paper lanterns
+      const lantern = new THREE.Mesh(new THREE.SphereGeometry(2.2, 12, 12), new THREE.MeshBasicMaterial({ color: 0xff0022 }));
+      lantern.position.set(c.x + px, 21, c.z);
+      g.add(lantern);
+    });
+
+    this.buildSuperMart(city, c.x, c.z, 'Golden Dragon Convenience');
+  }
+
+  // ------------------------------------------------------------
+  // CITY 7: LAS PALMAS CASINO STRIP (Golden Towers & Fountains)
+  // ------------------------------------------------------------
+
+  buildLasPalmasCity() {
+    const city = this.cities.las_palmas;
+    const g = city.group;
+    const c = city.center;
+
+    // Polished dark marble strip
+    const strip = new THREE.Mesh(
+      new THREE.PlaneGeometry(900, 900),
+      new THREE.MeshLambertMaterial({ color: 0x11161b })
+    );
+    strip.rotation.x = -Math.PI / 2;
+    strip.position.set(c.x, 0.05, c.z);
+    g.add(strip);
+
+    // Giant Golden Casino Pyramid
+    const pyramid = new THREE.Mesh(
+      new THREE.ConeGeometry(55, 60, 4),
+      new THREE.MeshPhongMaterial({ color: 0xf1c40f, shininess: 100 })
+    );
+    pyramid.rotation.y = Math.PI / 4;
+    pyramid.position.set(c.x, 30, c.z);
+    g.add(pyramid);
+    this.addCityCollider(city, c.x, c.z, 60, 60);
+
+    // Grand Illuminated Water Fountain
+    const fountain = new THREE.Mesh(
+      new THREE.CylinderGeometry(18, 20, 2, 24),
+      new THREE.MeshBasicMaterial({ color: 0x00d2d3 })
+    );
+    fountain.position.set(c.x, 1, c.z + 120);
+    g.add(fountain);
+    this.addCityCollider(city, c.x, c.z + 120, 20, 20);
+
+    // Casino Strip 24/7 Mart
+    this.buildSuperMart(city, c.x - 140, c.z, 'Palmas Casino Mart');
+  }
+
+  // ------------------------------------------------------------
+  // CITY 8: ALPINE PINES PEAK (Snowy Forest & Log Chalets)
+  // ------------------------------------------------------------
+
+  buildAlpinePinesCity() {
+    const city = this.cities.alpine_pines;
+    const g = city.group;
+    const c = city.center;
+
+    // Snowy white terrain ground
+    const snow = new THREE.Mesh(
+      new THREE.PlaneGeometry(900, 900),
+      new THREE.MeshLambertMaterial({ color: 0xf8f9fa })
+    );
+    snow.rotation.x = -Math.PI / 2;
+    snow.position.set(c.x, 0.05, c.z);
+    g.add(snow);
+
+    // Pine Trees Forest
+    for (let i = 0; i < 28; i++) {
+      const px = c.x + (Math.random() - 0.5) * 600;
+      const pz = c.z + (Math.random() - 0.5) * 600;
+      this.createPineTree(g, px, pz);
+    }
+
+    // Wooden Timber Ski Chalet
+    const chalet = new THREE.Mesh(
+      new THREE.BoxGeometry(35, 12, 30),
+      new THREE.MeshLambertMaterial({ color: 0x5d4037 })
+    );
+    chalet.position.set(c.x, 6.3, c.z);
+    g.add(chalet);
+    this.addCityCollider(city, c.x, c.z, 35, 30);
+
+    // Alpine Fire Lookout Tower (High Vantage Point)
+    const towerPillar = new THREE.Mesh(new THREE.BoxGeometry(4, 38, 4), new THREE.MeshLambertMaterial({ color: 0x8d6e63 }));
+    towerPillar.position.set(c.x + 80, 19, c.z + 80);
+    g.add(towerPillar);
+    this.addCityCollider(city, c.x + 80, c.z + 80, 5, 5);
+
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(16, 2, 16), new THREE.MeshLambertMaterial({ color: 0x5d4037 }));
+    deck.position.set(c.x + 80, 38, c.z + 80);
+    g.add(deck);
+
+    this.addCityInteractiveZone(city, {
+      id: 'alpine_lookout',
+      type: 'teleport',
+      name: 'Alpine Lookout Tower',
+      position: new THREE.Vector3(c.x + 80, 0.5, c.z + 74),
+      color: 0x1abc9c,
+      action: 'teleport',
+      targetPos: new THREE.Vector3(c.x + 80, 39.5, c.z + 80)
+    });
+  }
+
+  // ------------------------------------------------------------
+  // PROCEDURAL BUILDING & SHOP HELPERS
+  // ------------------------------------------------------------
+
+  createLocalGrid(group, center, blockCount, blockSize, roadWidth, groundHex = 0x222225) {
+    const totalStep = blockSize + roadWidth;
+    const span = blockCount * totalStep;
+
+    const roadMat = new THREE.MeshLambertMaterial({ color: groundHex });
+    const sidewalkMat = new THREE.MeshLambertMaterial({ color: 0x636e72 });
+
+    // Paved roadways
+    for (let i = -Math.floor(blockCount / 2); i <= Math.floor(blockCount / 2); i++) {
+      const pos = i * totalStep;
+
+      // Vertical road
+      const rV = new THREE.Mesh(new THREE.PlaneGeometry(roadWidth, span), roadMat);
+      rV.rotation.x = -Math.PI / 2;
+      rV.position.set(center.x + pos, 0.01, center.y);
+      group.add(rV);
+
+      // Horizontal road
+      const rH = new THREE.Mesh(new THREE.PlaneGeometry(span, roadWidth), roadMat);
+      rH.rotation.x = -Math.PI / 2;
+      rH.position.set(center.x, 0.01, center.z + pos);
+      group.add(rH);
     }
 
     // Sidewalk slabs
-    for (let x = -Math.floor(this.gridBlocks / 2); x <= Math.floor(this.gridBlocks / 2) - 1; x++) {
-      for (let z = -Math.floor(this.gridBlocks / 2); z <= Math.floor(this.gridBlocks / 2) - 1; z++) {
-        const cx = (x + 0.5) * totalStep;
-        const cz = (z + 0.5) * totalStep;
-
-        const sidewalkGeo = new THREE.BoxGeometry(this.blockSize, 0.3, this.blockSize);
-        const sidewalk = new THREE.Mesh(sidewalkGeo, sidewalkMat);
-        sidewalk.position.set(cx, 0.15, cz);
-        sidewalk.receiveShadow = true;
-        this.scene.add(sidewalk);
+    for (let x = -Math.floor(blockCount / 2); x < Math.floor(blockCount / 2); x++) {
+      for (let z = -Math.floor(blockCount / 2); z < Math.floor(blockCount / 2); z++) {
+        const cx = center.x + (x + 0.5) * totalStep;
+        const cz = center.z + (z + 0.5) * totalStep;
+        const sw = new THREE.Mesh(new THREE.BoxGeometry(blockSize, 0.25, blockSize), sidewalkMat);
+        sw.position.set(cx, 0.12, cz);
+        group.add(sw);
       }
     }
   }
 
-  createDistrictsAndBuildings() {
-    const totalStep = this.blockSize + this.roadWidth;
+  // 24/7 SuperMart & Convenience Store with Organised Interior
+  buildSuperMart(city, x, z, martName = '24/7 SuperMart') {
+    const g = city.group;
 
-    for (let x = -Math.floor(this.gridBlocks / 2); x <= Math.floor(this.gridBlocks / 2) - 1; x++) {
-      for (let z = -Math.floor(this.gridBlocks / 2); z <= Math.floor(this.gridBlocks / 2) - 1; z++) {
-        const cx = (x + 0.5) * totalStep;
-        const cz = (z + 0.5) * totalStep;
+    // Building structure (Glass front with bright neon logo)
+    const mart = new THREE.Mesh(
+      new THREE.BoxGeometry(26, 7.5, 22),
+      new THREE.MeshLambertMaterial({ color: 0x27ae60 })
+    );
+    mart.position.set(x, 4.0, z);
+    g.add(mart);
+    this.addCityCollider(city, x, z, 26, 22);
 
-        // Skip dedicated landmark blocks:
-        if (
-          (x === 0 && z === 0) || // Citadel
-          (x === -1 && z === 0) || // Hospital
-          (x === 1 && z === 0) || // Pizzeria
-          (x === 0 && z === 1) || // Taxi Depot
-          (x === -1 && z === 1) || // Mechanic Garage
-          (x === -2 && z === -2) || // Assassin Guild
-          (x === 1 && z === 1) || // Car Dealership
-          (x === 0 && z === -1) // Clothes & Armory
-        ) {
-          continue;
-        }
+    // Mart Illuminated Signboard
+    const sign = new THREE.Mesh(
+      new THREE.BoxGeometry(16, 2.2, 0.6),
+      new THREE.MeshBasicMaterial({ color: 0x00f0ff })
+    );
+    sign.position.set(x, 8.2, z - 11.2);
+    g.add(sign);
 
-        // REGION 1: Downtown Metropolis Skyscraper District (center: |x|<=1, |z|<=1)
-        if (Math.abs(x) <= 1 && Math.abs(z) <= 1) {
-          this.buildSkyscraperCluster(cx, cz);
-        }
-        // REGION 2: Vice Coast / Beach Mansions (East: x >= 2, z <= 1)
-        else if (x >= 2 && z <= 1) {
-          this.buildBeachfrontVillas(cx, cz);
-        }
-        // REGION 3: Industrial Port & Docks (South-West: x <= -2, z <= -2)
-        else if (x <= -2 && z <= -2) {
-          this.buildIndustrialWarehouses(cx, cz);
-        }
-        // REGION 4: Maple Valley Suburbs (North-East: x >= 2, z >= 2)
-        else if (x >= 2 && z >= 2) {
-          this.buildSuburbanHouses(cx, cz);
-        }
-        // REGION 5: Badlands Desert Outskirts (North-West: x <= -2, z >= 2)
-        else if (x <= -2 && z >= 2) {
-          this.buildDesertOutpost(cx, cz);
-        }
-        // REGION 6: Chinatown / Neo District (South-East: |x| <= 1, z <= -2)
-        else if (Math.abs(x) <= 1 && z <= -2) {
-          this.buildChinatownDistrict(cx, cz);
-        }
-        // Commercial Mid-rises everywhere else
-        else {
-          this.buildCommercialMidrises(cx, cz);
-        }
-      }
-    }
-  }
-
-  buildSkyscraperCluster(cx, cz) {
-    const heights = [70, 95, 120, 80];
-    const offsets = [
-      [-14, -14],
-      [14, -14],
-      [-14, 14],
-      [14, 14]
-    ];
-
-    offsets.forEach((off, idx) => {
-      const h = heights[idx] + Math.random() * 15;
-      const w = 18;
-      const d = 18;
-      const bColor = [0x1e272c, 0x22313f, 0x1f3a52, 0x2b3e50][idx % 4];
-
-      const bGeo = new THREE.BoxGeometry(w, h, d);
-      const bMat = new THREE.MeshLambertMaterial({ color: bColor });
-      const tower = new THREE.Mesh(bGeo, bMat);
-      tower.position.set(cx + off[0], h / 2 + 0.3, cz + off[1]);
-      tower.castShadow = true;
-      tower.receiveShadow = true;
-      this.scene.add(tower);
-
-      this.addCollider(cx + off[0], cz + off[1], w, d);
-
-      // Glowing Neon Accent Strips
-      const stripGeo = new THREE.BoxGeometry(0.3, h - 4, 0.3);
-      const stripMat = new THREE.MeshBasicMaterial({
-        color: idx % 2 === 0 ? 0x00f0ff : 0xff0077
-      });
-      const strip = new THREE.Mesh(stripGeo, stripMat);
-      strip.position.set(cx + off[0] + w / 2, h / 2, cz + off[1] + d / 2);
-      this.scene.add(strip);
+    // Interactive Shop & Loot Entrance Zone
+    this.addCityInteractiveZone(city, {
+      id: `supermart_${city.id}`,
+      type: 'shop_interior',
+      name: `${martName} (Buy / Loot Register)`,
+      desc: 'Buy Medkits, Armor, Energy Drinks, or Press [F] to Rob Register!',
+      position: new THREE.Vector3(x, 0.5, z - 12.5),
+      color: 0x00ff88,
+      action: 'open_supermart'
     });
   }
 
-  buildBeachfrontVillas(cx, cz) {
-    // Luxury seaside villas with white stucco and glass balconies
-    const villaGeo = new THREE.BoxGeometry(42, 14, 38);
-    const villaMat = new THREE.MeshPhongMaterial({ color: 0xfdfefe, shininess: 80 });
-    const villa = new THREE.Mesh(villaGeo, villaMat);
-    villa.position.set(cx, 7 + 0.3, cz);
-    this.scene.add(villa);
-    this.addCollider(cx, cz, 42, 38);
+  // First National Bank & Heist Vault
+  buildBankBuilding(city, x, z) {
+    const g = city.group;
 
-    // Blue Swimming Pool
-    const poolGeo = new THREE.BoxGeometry(16, 0.4, 24);
-    const poolMat = new THREE.MeshBasicMaterial({ color: 0x00d2d3 });
-    const pool = new THREE.Mesh(poolGeo, poolMat);
-    pool.position.set(cx + 22, 0.25, cz);
-    this.scene.add(pool);
-  }
+    const bank = new THREE.Mesh(
+      new THREE.BoxGeometry(36, 18, 32),
+      new THREE.MeshLambertMaterial({ color: 0xdfe6e9 })
+    );
+    bank.position.set(x, 9.3, z);
+    g.add(bank);
+    this.addCityCollider(city, x, z, 36, 32);
 
-  buildCommercialMidrises(cx, cz) {
-    const bGeo = new THREE.BoxGeometry(40, 32, 40);
-    const bMat = new THREE.MeshLambertMaterial({ color: 0x394b59 });
-    const building = new THREE.Mesh(bGeo, bMat);
-    building.position.set(cx, 16 + 0.3, cz);
-    building.castShadow = true;
-    building.receiveShadow = true;
-    this.scene.add(building);
-    this.addCollider(cx, cz, 40, 40);
+    // Columns
+    [-14, -7, 7, 14].forEach(px => {
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.4, 16, 16), new THREE.MeshLambertMaterial({ color: 0xb2bec3 }));
+      col.position.set(x + px, 8.5, z - 16.5);
+      g.add(col);
+    });
 
-    for (let f = 4; f < 30; f += 6) {
-      const bandGeo = new THREE.BoxGeometry(40.4, 2.5, 40.4);
-      const bandMat = new THREE.MeshBasicMaterial({ color: 0x1f5470 });
-      const band = new THREE.Mesh(bandGeo, bandMat);
-      band.position.set(cx, f, cz);
-      this.scene.add(band);
-    }
-  }
-
-  buildSuburbanHouses(cx, cz) {
-    const houseCoords = [
-      [-13, -13],
-      [13, -13],
-      [-13, 13],
-      [13, 13]
-    ];
-    const roofColors = [0x8b2500, 0x4a5d4e, 0x334455, 0x78553d];
-
-    houseCoords.forEach((off, idx) => {
-      const hx = cx + off[0];
-      const hz = cz + off[1];
-
-      const bodyGeo = new THREE.BoxGeometry(15, 8, 15);
-      const bodyMat = new THREE.MeshLambertMaterial({ color: 0xdedede });
-      const body = new THREE.Mesh(bodyGeo, bodyMat);
-      body.position.set(hx, 4 + 0.3, hz);
-      body.castShadow = true;
-      body.receiveShadow = true;
-      this.scene.add(body);
-
-      const roofGeo = new THREE.ConeGeometry(12.5, 5.5, 4);
-      const roofMat = new THREE.MeshLambertMaterial({ color: roofColors[idx % 4] });
-      const roof = new THREE.Mesh(roofGeo, roofMat);
-      roof.rotation.y = Math.PI / 4;
-      roof.position.set(hx, 8 + 2.75 + 0.3, hz);
-      roof.castShadow = true;
-      this.scene.add(roof);
-
-      this.addCollider(hx, hz, 15, 15);
+    this.addCityInteractiveZone(city, {
+      id: `bank_${city.id}`,
+      type: 'bank_heist',
+      name: 'First National Bank & Vault',
+      desc: 'Crack vault for $15K-$30K heist payout (Triggers 4-Star police manhunt)!',
+      position: new THREE.Vector3(x, 0.5, z - 18),
+      color: 0xf1c40f,
+      action: 'open_bank'
     });
   }
 
-  buildDesertOutpost(cx, cz) {
-    // Route 66 Motel & Diner
-    const motelGeo = new THREE.BoxGeometry(44, 9, 32);
-    const motelMat = new THREE.MeshLambertMaterial({ color: 0x935116 });
-    const motel = new THREE.Mesh(motelGeo, motelMat);
-    motel.position.set(cx, 4.5 + 0.3, cz);
-    this.scene.add(motel);
-    this.addCollider(cx, cz, 44, 32);
+  buildCitadelTower(city, x, z) {
+    const g = city.group;
 
-    // Neon Route 66 Cactus Sign
-    const signGeo = new THREE.BoxGeometry(8, 3, 0.5);
-    const signMat = new THREE.MeshBasicMaterial({ color: 0x27ae60 });
-    const sign = new THREE.Mesh(signGeo, signMat);
-    sign.position.set(cx, 12, cz - 16.3);
-    this.scene.add(sign);
-  }
+    // 138-meter Citadel Tower
+    const tower = new THREE.Mesh(
+      new THREE.BoxGeometry(40, 138, 40),
+      new THREE.MeshPhongMaterial({ color: 0x0b1726, shininess: 95 })
+    );
+    tower.position.set(x, 69.3, z);
+    g.add(tower);
+    this.addCityCollider(city, x, z, 40, 40);
 
-  buildChinatownDistrict(cx, cz) {
-    // Pagoda style commercial building
-    const baseGeo = new THREE.BoxGeometry(38, 22, 38);
-    const baseMat = new THREE.MeshLambertMaterial({ color: 0x7b241c });
-    const base = new THREE.Mesh(baseGeo, baseMat);
-    base.position.set(cx, 11 + 0.3, cz);
-    this.scene.add(base);
-    this.addCollider(cx, cz, 38, 38);
+    // Rooftop Helipad & Sniper Deck at Y=138.5
+    const deck = new THREE.Mesh(
+      new THREE.BoxGeometry(46, 2.5, 46),
+      new THREE.MeshLambertMaterial({ color: 0x1f2428 })
+    );
+    deck.position.set(x, 138.5, z);
+    g.add(deck);
 
-    // Flared Pagoda Roof tiers
-    [12, 18, 24].forEach((h, i) => {
-      const roofGeo = new THREE.ConeGeometry(24 - i * 4, 3, 4);
-      const roofMat = new THREE.MeshLambertMaterial({ color: 0xd4ac0d }); // Golden yellow tiles
-      const r = new THREE.Mesh(roofGeo, roofMat);
-      r.rotation.y = Math.PI / 4;
-      r.position.set(cx, h, cz);
-      this.scene.add(r);
-    });
-
-    // Glowing Red Paper Lanterns
-    for (let l = 0; l < 4; l++) {
-      const lanGeo = new THREE.SphereGeometry(0.8, 8, 8);
-      const lanMat = new THREE.MeshBasicMaterial({ color: 0xff0033 });
-      const lan = new THREE.Mesh(lanGeo, lanMat);
-      lan.position.set(cx - 15 + l * 10, 6, cz - 20);
-      this.scene.add(lan);
-    }
-  }
-
-  buildIndustrialWarehouses(cx, cz) {
-    const whGeo = new THREE.BoxGeometry(44, 15, 30);
-    const whMat = new THREE.MeshLambertMaterial({ color: 0x4d5656 });
-    const wh = new THREE.Mesh(whGeo, whMat);
-    wh.position.set(cx, 7.5 + 0.3, cz - 6);
-    wh.castShadow = true;
-    wh.receiveShadow = true;
-    this.scene.add(wh);
-    this.addCollider(cx, cz - 6, 44, 30);
-
-    const colors = [0xb03a2e, 0x1f618d, 0x229954, 0xd4ac0d];
-    for (let c = 0; c < 4; c++) {
-      const cGeo = new THREE.BoxGeometry(11, 4.5, 4.5);
-      const cMat = new THREE.MeshLambertMaterial({ color: colors[c % colors.length] });
-      const container = new THREE.Mesh(cGeo, cMat);
-      container.position.set(cx - 12 + c * 7, 2.25 + (c % 2) * 4.5 + 0.3, cz + 16);
-      container.castShadow = true;
-      this.scene.add(container);
-      this.addCollider(cx - 12 + c * 7, cz + 16, 11, 4.5);
-    }
-  }
-
-  // ------------------------------------------------------------
-  // ROOFTOP SNIPER VANTAGE POINTS & ELEVATORS
-  // ------------------------------------------------------------
-
-  createRooftopSniperVantagePoints() {
-    const totalStep = this.blockSize + this.roadWidth;
-    const citadelPos = { x: 0.5 * totalStep, z: 0.5 * totalStep }; // (39, 39)
-
-    // 1. CITADEL ROOFTOP HELIPAD & SNIPER PLATFORM (Y = 138m)
-    const roofPlatformGeo = new THREE.BoxGeometry(26, 1.5, 26);
-    const roofPlatformMat = new THREE.MeshLambertMaterial({ color: 0x2c3e50 });
-    const roof = new THREE.Mesh(roofPlatformGeo, roofPlatformMat);
-    roof.position.set(citadelPos.x, 137.5, citadelPos.z);
-    this.scene.add(roof);
-
-    // Safety perimeter railings & sandbag cover
-    const railMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
-    const railNorth = new THREE.Mesh(new THREE.BoxGeometry(26, 1.2, 0.4), railMat);
-    railNorth.position.set(citadelPos.x, 139, citadelPos.z - 12.8);
-    this.scene.add(railNorth);
-
-    const railSouth = new THREE.Mesh(new THREE.BoxGeometry(26, 1.2, 0.4), railMat);
-    railSouth.position.set(citadelPos.x, 139, citadelPos.z + 12.8);
-    this.scene.add(railSouth);
-
-    // Helipad Yellow 'H'
-    const hBar1 = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.1, 10), new THREE.MeshBasicMaterial({ color: 0xffea00 }));
-    hBar1.position.set(citadelPos.x - 3.5, 138.3, citadelPos.z);
-    this.scene.add(hBar1);
-
-    const hBar2 = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.1, 10), new THREE.MeshBasicMaterial({ color: 0xffea00 }));
-    hBar2.position.set(citadelPos.x + 3.5, 138.3, citadelPos.z);
-    this.scene.add(hBar2);
-
-    const hMid = new THREE.Mesh(new THREE.BoxGeometry(7, 0.1, 1.2), new THREE.MeshBasicMaterial({ color: 0xffea00 }));
-    hMid.position.set(citadelPos.x, 138.3, citadelPos.z);
-    this.scene.add(hMid);
-
-    // Ground Elevator Entrance to Rooftop
-    this.addInteractiveZone({
+    // High-Speed Express Elevator Entrance (Ground)
+    this.addCityInteractiveZone(city, {
       id: 'citadel_elevator_up',
       type: 'teleport',
-      name: 'Citadel High-Speed Elevator to Rooftop',
-      desc: 'Ride express elevator up to the 138-meter Citadel Rooftop (Prime Sniper Vantage Point)!',
-      position: new THREE.Vector3(citadelPos.x, 0.5, citadelPos.z - 19),
+      name: 'Citadel Rooftop Sniper Elevator',
+      desc: 'Express elevator up to the 138m Rooftop Helipad & Sniper Vantage Point!',
+      position: new THREE.Vector3(x, 0.5, z - 21),
       color: 0x00f0ff,
       action: 'teleport',
-      targetPos: new THREE.Vector3(citadelPos.x, 138.5, citadelPos.z - 8)
+      targetPos: new THREE.Vector3(x, 140, z - 10)
     });
 
-    // Rooftop Elevator Return to Ground
-    this.addInteractiveZone({
+    // Rooftop Return Elevator
+    this.addCityInteractiveZone(city, {
       id: 'citadel_elevator_down',
       type: 'teleport',
-      name: 'Rooftop Elevator Down to Street Level',
-      desc: 'Return to ground-level central metropolis plaza.',
-      position: new THREE.Vector3(citadelPos.x, 138.5, citadelPos.z - 9),
+      name: 'Rooftop Elevator to Street Level',
+      desc: 'Return to ground central metropolis plaza.',
+      position: new THREE.Vector3(x, 140, z - 11),
       color: 0x00f0ff,
       action: 'teleport',
-      targetPos: new THREE.Vector3(citadelPos.x, 1.0, citadelPos.z - 17)
+      targetPos: new THREE.Vector3(x, 1.0, z - 19)
     });
-  }
 
-  createPenthouseInterior() {
-    // Luxury Penthouse Interior Suite (Hovering at Y = 75m inside central tower)
-    const totalStep = this.blockSize + this.roadWidth;
-    const px = 0.5 * totalStep;
-    const pz = 0.5 * totalStep;
-    const py = 75;
-
-    // Floor & Walls
-    const floorGeo = new THREE.BoxGeometry(22, 0.5, 22);
-    const floorMat = new THREE.MeshLambertMaterial({ color: 0x1f2421 });
-    const floor = new THREE.Mesh(floorGeo, floorMat);
-    floor.position.set(px, py, pz);
-    this.scene.add(floor);
-
-    // Leather Couch
-    const couchGeo = new THREE.BoxGeometry(7, 1.5, 2.5);
-    const couchMat = new THREE.MeshLambertMaterial({ color: 0x4a2311 });
-    const couch = new THREE.Mesh(couchGeo, couchMat);
-    couch.position.set(px, py + 1.0, pz - 6);
-    this.scene.add(couch);
-
-    // Master Bed (Rest & Heal to 100% HP)
-    const bedGeo = new THREE.BoxGeometry(5, 1.2, 6);
-    const bedMat = new THREE.MeshLambertMaterial({ color: 0x7f1d1d });
-    const bed = new THREE.Mesh(bedGeo, bedMat);
-    bed.position.set(px + 7, py + 0.8, pz + 5);
-    this.scene.add(bed);
-
-    // Dark Web Contract Laptop Desk
-    const deskGeo = new THREE.BoxGeometry(4, 1.4, 2);
-    const deskMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
-    const desk = new THREE.Mesh(deskGeo, deskMat);
-    desk.position.set(px - 7, py + 0.9, pz + 5);
-    this.scene.add(desk);
-
-    const screenGeo = new THREE.BoxGeometry(1.4, 1.0, 0.1);
-    const screenMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
-    const laptop = new THREE.Mesh(screenGeo, screenMat);
-    laptop.position.set(px - 7, py + 2.0, pz + 5);
-    this.scene.add(laptop);
-
-    // Penthouse Interior Entrance Beacon (Ground)
-    this.addInteractiveZone({
+    // Luxury Penthouse Safehouse (Rest to heal 100% HP)
+    this.addCityInteractiveZone(city, {
       id: 'penthouse_enter',
-      type: 'teleport',
-      name: 'Penthouse Private Elevator (Safehouse Suite)',
-      desc: 'Enter your luxury high-rise safehouse. Rest in master bed to heal 100% HP & browse contracts.',
-      position: new THREE.Vector3(px + 12, 0.5, pz - 19),
+      type: 'teleport_heal',
+      name: 'Citadel Penthouse Suite (Safehouse)',
+      desc: 'Rest in master suite to heal 100% HP & browse contracts.',
+      position: new THREE.Vector3(x + 14, 0.5, z - 21),
       color: 0x9b59b6,
       action: 'teleport_heal',
-      targetPos: new THREE.Vector3(px, py + 1.2, pz)
-    });
-
-    // Penthouse Interior Exit Beacon
-    this.addInteractiveZone({
-      id: 'penthouse_exit',
-      type: 'teleport',
-      name: 'Penthouse Exit to Street',
-      desc: 'Take private elevator back down to city streets.',
-      position: new THREE.Vector3(px, py + 1.0, pz - 9),
-      color: 0x9b59b6,
-      action: 'teleport',
-      targetPos: new THREE.Vector3(px + 12, 1.0, pz - 17)
+      targetPos: new THREE.Vector3(x, 140, z + 8)
     });
   }
 
-  // ------------------------------------------------------------
-  // KEY LANDMARKS
-  // ------------------------------------------------------------
+  buildHospital(city, x, z) {
+    const g = city.group;
+    const h = new THREE.Mesh(new THREE.BoxGeometry(44, 26, 40), new THREE.MeshLambertMaterial({ color: 0xecf0f1 }));
+    h.position.set(x, 13.3, z);
+    g.add(h);
+    this.addCityCollider(city, x, z, 44, 40);
 
-  createKeyLandmarks() {
-    const totalStep = this.blockSize + this.roadWidth;
-    const blockCenter = (bx, bz) => ({ x: (bx + 0.5) * totalStep, z: (bz + 0.5) * totalStep });
+    // Red Cross Sign
+    const cross1 = new THREE.Mesh(new THREE.BoxGeometry(10, 2.5, 0.4), new THREE.MeshBasicMaterial({ color: 0xff0022 }));
+    cross1.position.set(x, 22, z - 20.3);
+    g.add(cross1);
+    const cross2 = new THREE.Mesh(new THREE.BoxGeometry(2.5, 10, 0.4), new THREE.MeshBasicMaterial({ color: 0xff0022 }));
+    cross2.position.set(x, 22, z - 20.3);
+    g.add(cross2);
 
-    // 1. ST. JUDE CITY HOSPITAL at (-1, 0)
-    const hosp = blockCenter(-1, 0);
-    this.buildHospital(hosp.x, hosp.z);
-
-    // 2. LUIGI'S PIZZERIA at (1, 0)
-    const pizza = blockCenter(1, 0);
-    this.buildPizzeria(pizza.x, pizza.z);
-
-    // 3. METRO CAB DEPOT at (0, 1)
-    const taxi = blockCenter(0, 1);
-    this.buildTaxiDepot(taxi.x, taxi.z);
-
-    // 4. CITY CUSTOMS MECHANIC & TUNING at (-1, 1)
-    const mechanic = blockCenter(-1, 1);
-    this.buildCustomsMechanicShop(mechanic.x, mechanic.z);
-
-    // 5. THE BLACK LOTUS ASSASSIN GUILD at (-2, -2)
-    const guild = blockCenter(-2, -2);
-    this.buildAssassinGuild(guild.x, guild.z);
-
-    // 6. APEX CAR DEALERSHIP at (1, 1)
-    const dealer = blockCenter(1, 1);
-    this.buildCarDealership(dealer.x, dealer.z);
-
-    // 7. URBAN THREADS & ARMORY at (0, -1)
-    const shop = blockCenter(0, -1);
-    this.buildClothesAndArmoryShop(shop.x, shop.z);
-
-    // 8. CITADEL DOWNTOWN TOWER at (0, 0)
-    const citadel = blockCenter(0, 0);
-    this.buildCitadelTower(citadel.x, citadel.z);
-
-    // 9. REAL ESTATE PROPERTIES across all districts
-    this.buildRealEstateProperties(totalStep);
-  }
-
-  buildHospital(x, z) {
-    const hGeo = new THREE.BoxGeometry(42, 24, 38);
-    const hMat = new THREE.MeshLambertMaterial({ color: 0xecf0f1 });
-    const hospital = new THREE.Mesh(hGeo, hMat);
-    hospital.position.set(x, 12 + 0.3, z);
-    hospital.castShadow = true;
-    hospital.receiveShadow = true;
-    this.scene.add(hospital);
-    this.addCollider(x, z, 42, 38);
-
-    const cV = new THREE.Mesh(new THREE.BoxGeometry(2.5, 9, 0.6), new THREE.MeshBasicMaterial({ color: 0xee1111 }));
-    cV.position.set(x, 18, z + 19.3);
-    this.scene.add(cV);
-
-    const cH = new THREE.Mesh(new THREE.BoxGeometry(9, 2.5, 0.6), new THREE.MeshBasicMaterial({ color: 0xee1111 }));
-    cH.position.set(x, 18, z + 19.3);
-    this.scene.add(cH);
-
-    this.addInteractiveZone({
-      id: 'job_ambulance',
+    this.addCityInteractiveZone(city, {
+      id: 'hospital_ambulance_job',
       type: 'job',
-      name: 'St. Jude Hospital (Ambulance Job)',
-      desc: 'Work as an Emergency Paramedic. Rush injured citizens to the ER!',
-      position: new THREE.Vector3(x, 0.5, z - 24),
+      name: 'St. Jude Hospital ER (Ambulance Shift)',
+      position: new THREE.Vector3(x, 0.5, z - 22),
       color: 0xff2222,
       action: 'ambulance_job'
     });
   }
 
-  buildPizzeria(x, z) {
-    const pGeo = new THREE.BoxGeometry(34, 14, 28);
-    const pMat = new THREE.MeshLambertMaterial({ color: 0xcd6155 });
-    const pMesh = new THREE.Mesh(pGeo, pMat);
-    pMesh.position.set(x, 7 + 0.3, z);
-    this.scene.add(pMesh);
-    this.addCollider(x, z, 34, 28);
+  buildPizzeria(city, x, z) {
+    const g = city.group;
+    const p = new THREE.Mesh(new THREE.BoxGeometry(38, 14, 34), new THREE.MeshLambertMaterial({ color: 0xd35400 }));
+    p.position.set(x, 7.3, z);
+    g.add(p);
+    this.addCityCollider(city, x, z, 38, 34);
 
-    const sign = new THREE.Mesh(new THREE.ConeGeometry(5, 7, 3), new THREE.MeshBasicMaterial({ color: 0xf1c40f }));
-    sign.rotation.z = Math.PI / 2;
-    sign.position.set(x, 17, z - 10);
-    this.scene.add(sign);
-
-    this.addInteractiveZone({
-      id: 'job_delivery',
+    this.addCityInteractiveZone(city, {
+      id: 'luigis_pizza_job',
       type: 'job',
-      name: "Luigi's Express (Delivery Boy Job)",
-      desc: 'Deliver hot pizzas and parcels across the city before time runs out!',
-      position: new THREE.Vector3(x, 0.5, z - 20),
+      name: "Luigi's Express (Pizza Delivery Shift)",
+      position: new THREE.Vector3(x, 0.5, z - 19),
       color: 0xf39c12,
       action: 'delivery_job'
     });
   }
 
-  buildTaxiDepot(x, z) {
-    const tGeo = new THREE.BoxGeometry(36, 12, 30);
-    const tMat = new THREE.MeshLambertMaterial({ color: 0x2c3e50 });
-    const depot = new THREE.Mesh(tGeo, tMat);
-    depot.position.set(x, 6 + 0.3, z);
-    this.scene.add(depot);
-    this.addCollider(x, z, 36, 30);
+  buildTaxiDepot(city, x, z) {
+    const g = city.group;
+    const d = new THREE.Mesh(new THREE.BoxGeometry(40, 14, 38), new THREE.MeshLambertMaterial({ color: 0xf1c40f }));
+    d.position.set(x, 7.3, z);
+    g.add(d);
+    this.addCityCollider(city, x, z, 40, 38);
 
-    const sign = new THREE.Mesh(new THREE.BoxGeometry(12, 2.8, 1.8), new THREE.MeshBasicMaterial({ color: 0xffcc00 }));
-    sign.position.set(x, 13.5, z - 10);
-    this.scene.add(sign);
-
-    this.addInteractiveZone({
-      id: 'job_taxi',
+    this.addCityInteractiveZone(city, {
+      id: 'metro_cab_job',
       type: 'job',
-      name: 'Metro Cab Depot (Cab Driver Job)',
-      desc: 'Drive a city taxi. Pick up passengers and drop them off for generous fares!',
-      position: new THREE.Vector3(x, 0.5, z - 20),
-      color: 0xffcc00,
+      name: 'Metro City Cab Depot (Taxi Shift)',
+      position: new THREE.Vector3(x, 0.5, z - 21),
+      color: 0xf1c40f,
       action: 'taxi_job'
     });
   }
 
-  buildCustomsMechanicShop(x, z) {
-    const mGeo = new THREE.BoxGeometry(38, 13, 32);
-    const mMat = new THREE.MeshLambertMaterial({ color: 0x3e2723 });
-    const shop = new THREE.Mesh(mGeo, mMat);
-    shop.position.set(x, 6.5 + 0.3, z);
-    this.scene.add(shop);
-    this.addCollider(x, z, 38, 32);
+  buildCustomsMechanicShop(city, x, z) {
+    const g = city.group;
+    const m = new THREE.Mesh(new THREE.BoxGeometry(42, 16, 38), new THREE.MeshLambertMaterial({ color: 0x2c3e50 }));
+    m.position.set(x, 8.3, z);
+    g.add(m);
+    this.addCityCollider(city, x, z, 42, 38);
 
-    const sign = new THREE.Mesh(new THREE.BoxGeometry(16, 2.5, 0.8), new THREE.MeshBasicMaterial({ color: 0xff7043 }));
-    sign.position.set(x, 12, z - 16.2);
-    this.scene.add(sign);
-
-    this.addInteractiveZone({
-      id: 'shop_mechanic',
+    this.addCityInteractiveZone(city, {
+      id: 'city_customs_shop',
       type: 'shop',
-      name: 'City Customs (Mechanic & Tuning Shop)',
-      desc: 'Repair vehicle, install Nitro Boost (NOS), engine performance tuning, drift suspension, and custom paint!',
-      position: new THREE.Vector3(x, 0.5, z - 22),
-      color: 0xff7043,
+      name: 'City Customs (Mechanic Tuning & Nitro)',
+      position: new THREE.Vector3(x, 0.5, z - 21),
+      color: 0x3498db,
       action: 'open_mechanic'
     });
   }
 
-  buildAssassinGuild(x, z) {
-    const gGeo = new THREE.BoxGeometry(40, 16, 40);
-    const gMat = new THREE.MeshLambertMaterial({ color: 0x11161d });
-    const hideout = new THREE.Mesh(gGeo, gMat);
-    hideout.position.set(x, 8 + 0.3, z);
-    this.scene.add(hideout);
-    this.addCollider(x, z, 40, 40);
+  buildAssassinGuild(city, x, z) {
+    const g = city.group;
+    const guild = new THREE.Mesh(new THREE.BoxGeometry(36, 15, 36), new THREE.MeshLambertMaterial({ color: 0x050505 }));
+    guild.position.set(x, 7.8, z);
+    g.add(guild);
+    this.addCityCollider(city, x, z, 36, 36);
 
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(4.2, 0.35, 8, 24), new THREE.MeshBasicMaterial({ color: 0xff0044 }));
-    ring.position.set(x, 11, z + 20.2);
-    this.scene.add(ring);
-
-    this.addInteractiveZone({
-      id: 'guild_entrance',
+    this.addCityInteractiveZone(city, {
+      id: 'assassin_guild_entrance',
       type: 'guild',
       name: "The Black Lotus (Assassin's Guild)",
-      desc: 'Underground contract board. Hunt targets, photograph their bodies, collect bounties!',
-      position: new THREE.Vector3(x, 0.5, z + 24),
-      color: 0xff0044,
+      position: new THREE.Vector3(x, 0.5, z - 20),
+      color: 0x8e44ad,
       action: 'open_guild'
     });
   }
 
-  buildCarDealership(x, z) {
-    const dGeo = new THREE.BoxGeometry(40, 14, 38);
-    const dMat = new THREE.MeshPhongMaterial({ color: 0x1a252f, shininess: 70 });
-    const dealer = new THREE.Mesh(dGeo, dMat);
-    dealer.position.set(x, 7 + 0.3, z);
-    this.scene.add(dealer);
-    this.addCollider(x, z, 40, 38);
+  buildCarDealership(city, x, z) {
+    const g = city.group;
+    const dealer = new THREE.Mesh(new THREE.BoxGeometry(46, 15, 42), new THREE.MeshPhongMaterial({ color: 0x1a1a24, shininess: 90 }));
+    dealer.position.set(x, 7.8, z);
+    g.add(dealer);
+    this.addCityCollider(city, x, z, 46, 42);
 
-    const glass = new THREE.Mesh(new THREE.BoxGeometry(36, 7.5, 0.4), new THREE.MeshBasicMaterial({ color: 0x00f5d4, transparent: true, opacity: 0.6 }));
-    glass.position.set(x, 5.5, z - 19.2);
-    this.scene.add(glass);
-
-    this.addInteractiveZone({
-      id: 'shop_cars',
+    this.addCityInteractiveZone(city, {
+      id: 'apex_dealership',
       type: 'shop',
-      name: 'Apex Exotic Motors (Car Dealership)',
-      desc: 'Purchase supercars, muscle cars, delivery bikes, taxis, and ambulances!',
-      position: new THREE.Vector3(x, 0.5, z - 24),
-      color: 0x00f5d4,
+      name: 'Apex Exotic Motors Showroom',
+      position: new THREE.Vector3(x, 0.5, z - 23),
+      color: 0xe74c3c,
       action: 'open_cardealer'
     });
   }
 
-  buildClothesAndArmoryShop(x, z) {
-    const shop = new THREE.Mesh(new THREE.BoxGeometry(20, 13, 30), new THREE.MeshLambertMaterial({ color: 0x5b2c6f }));
-    shop.position.set(x - 10, 6.5 + 0.3, z);
-    this.scene.add(shop);
-    this.addCollider(x - 10, z, 20, 30);
+  buildClothesAndArmoryShop(city, x, z) {
+    const g = city.group;
+    const b = new THREE.Mesh(new THREE.BoxGeometry(36, 14, 34), new THREE.MeshLambertMaterial({ color: 0x34495e }));
+    b.position.set(x, 7.3, z);
+    g.add(b);
+    this.addCityCollider(city, x, z, 36, 34);
 
-    const armory = new THREE.Mesh(new THREE.BoxGeometry(18, 13, 30), new THREE.MeshLambertMaterial({ color: 0x2e4053 }));
-    armory.position.set(x + 11, 6.5 + 0.3, z);
-    this.scene.add(armory);
-    this.addCollider(x + 11, z, 18, 30);
-
-    this.addInteractiveZone({
-      id: 'shop_clothes',
+    this.addCityInteractiveZone(city, {
+      id: 'clothes_shop',
       type: 'shop',
-      name: 'Urban Threads & Character Studio',
-      desc: 'Customize your style, skin tone, hair, sunglasses, and outfits!',
-      position: new THREE.Vector3(x - 10, 0.5, z - 18),
-      color: 0x9b59b6,
+      name: 'Urban Threads Boutique',
+      position: new THREE.Vector3(x - 7, 0.5, z - 19),
+      color: 0x1abc9c,
       action: 'open_clothes'
     });
 
-    this.addInteractiveZone({
-      id: 'shop_armory',
+    this.addCityInteractiveZone(city, {
+      id: 'armory_shop',
       type: 'shop',
-      name: 'Underground Armory & Optics',
-      desc: 'Purchase silenced pistols, sniper rifles with tactical scopes, and body armor!',
-      position: new THREE.Vector3(x + 11, 0.5, z - 18),
-      color: 0xe67e22,
+      name: 'Underground Armory (Silenced Weapons)',
+      position: new THREE.Vector3(x + 7, 0.5, z - 19),
+      color: 0x95a5a6,
       action: 'open_armory'
     });
   }
 
-  buildCitadelTower(x, z) {
-    const base = new THREE.Mesh(new THREE.BoxGeometry(36, 45, 36), new THREE.MeshLambertMaterial({ color: 0x1a1e24 }));
-    base.position.set(x, 22.5 + 0.3, z);
-    this.scene.add(base);
+  // ------------------------------------------------------------
+  // VEGETATION & PROPS
+  // ------------------------------------------------------------
 
-    const mid = new THREE.Mesh(new THREE.BoxGeometry(28, 55, 28), new THREE.MeshLambertMaterial({ color: 0x11161d }));
-    mid.position.set(x, 45 + 27.5 + 0.3, z);
-    this.scene.add(mid);
+  createPalmTree(group, x, z) {
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.55, 11, 8), new THREE.MeshLambertMaterial({ color: 0x8b5a2b }));
+    trunk.position.set(x, 5.5, z);
+    group.add(trunk);
 
-    const top = new THREE.Mesh(new THREE.BoxGeometry(20, 40, 20), new THREE.MeshPhongMaterial({ color: 0x0a0d12, shininess: 80 }));
-    top.position.set(x, 100 + 20 + 0.3, z);
-    this.scene.add(top);
-
-    const spire = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 1.2, 28, 8), new THREE.MeshBasicMaterial({ color: 0x00f0ff }));
-    spire.position.set(x, 140 + 14, z);
-    this.scene.add(spire);
-
-    this.addCollider(x, z, 36, 36);
-
-    this.addInteractiveZone({
-      id: 'prop_penthouse',
-      type: 'property',
-      propertyId: 'penthouse',
-      name: 'The Citadel Skyline Penthouse',
-      desc: 'Ultimate luxury penthouse atop the skyline. Massive rental income!',
-      price: 150000,
-      rentIncome: 7500,
-      position: new THREE.Vector3(x, 0.5, z - 22),
-      color: 0x00f0ff,
-      action: 'interact_property'
-    });
+    const leaves = new THREE.Mesh(new THREE.ConeGeometry(5, 2.5, 6), new THREE.MeshLambertMaterial({ color: 0x27ae60 }));
+    leaves.position.set(x, 11.2, z);
+    group.add(leaves);
   }
 
-  buildRealEstateProperties(step) {
-    const blockCenter = (bx, bz) => ({ x: (bx + 0.5) * step, z: (bz + 0.5) * step });
+  createPineTree(group, x, z) {
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.8, 12, 8), new THREE.MeshLambertMaterial({ color: 0x5d4037 }));
+    trunk.position.set(x, 6, z);
+    group.add(trunk);
 
-    const properties = [
-      {
-        id: 'motel_studio',
-        name: 'Sunset Motel Studio #4 (Badlands)',
-        desc: 'Modest starter pad in the desert outskirts.',
-        price: 3500,
-        rentIncome: 250,
-        pos: new THREE.Vector3(blockCenter(-3, 2).x, 0.5, blockCenter(-3, 2).z - 20),
-        color: 0x27ae60
-      },
-      {
-        id: 'suburban_villa',
-        name: 'Maple Grove Family Bungalow (Suburbs)',
-        desc: 'Charming 3-bedroom house in Maple Valley.',
-        price: 24000,
-        rentIncome: 1200,
-        pos: new THREE.Vector3(blockCenter(3, 3).x, 0.5, blockCenter(3, 3).z - 20),
-        color: 0x27ae60
-      },
-      {
-        id: 'downtown_loft',
-        name: 'Neo-Tokyo Brick Loft (Chinatown)',
-        desc: 'Stylish brick loft in the neon district.',
-        price: 55000,
-        rentIncome: 2800,
-        pos: new THREE.Vector3(blockCenter(0, -3).x, 0.5, blockCenter(0, -3).z - 20),
-        color: 0x27ae60
-      },
-      {
-        id: 'ocean_mansion',
-        name: 'Harbor Crest Seaside Mansion (Vice Beach)',
-        desc: 'Exclusive beachfront villa with private dock overlooking the ocean.',
-        price: 280000,
-        rentIncome: 16000,
-        pos: new THREE.Vector3(blockCenter(3, -1).x, 0.5, blockCenter(3, -1).z - 20),
-        color: 0x27ae60
-      },
-      {
-        id: 'docks_warehouse',
-        name: 'Pier 9 Commercial Hub (Industrial Port)',
-        desc: 'Sprawling commercial logistics warehouse.',
-        price: 90000,
-        rentIncome: 5000,
-        pos: new THREE.Vector3(blockCenter(-3, -3).x, 0.5, blockCenter(-3, -3).z - 20),
-        color: 0x27ae60
-      }
-    ];
-
-    properties.forEach(p => {
-      this.addInteractiveZone({
-        id: 'prop_' + p.id,
-        type: 'property',
-        propertyId: p.id,
-        name: p.name,
-        desc: p.desc,
-        price: p.price,
-        rentIncome: p.rentIncome,
-        position: p.pos,
-        color: p.color,
-        action: 'interact_property'
-      });
-    });
+    const foliage = new THREE.Mesh(new THREE.ConeGeometry(6, 16, 8), new THREE.MeshLambertMaterial({ color: 0x1b4332 }));
+    foliage.position.set(x, 14, z);
+    group.add(foliage);
   }
 
-  createStreetFurniture() {
-    const totalStep = this.blockSize + this.roadWidth;
-    const halfSpan = Math.floor(this.gridBlocks / 2) * totalStep;
+  // ------------------------------------------------------------
+  // COLLIDERS & INTERACTIVE QUERIES
+  // ------------------------------------------------------------
 
-    const poleGeo = new THREE.CylinderGeometry(0.15, 0.2, 7.5, 6);
-    const poleMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
-    const lampHeadGeo = new THREE.BoxGeometry(0.8, 0.3, 1.4);
-    const lampHeadMat = new THREE.MeshBasicMaterial({ color: 0xfffaed });
-
-    for (let x = -halfSpan + 10; x <= halfSpan - 10; x += 55) {
-      for (let z = -halfSpan + 10; z <= halfSpan - 10; z += 55) {
-        const onVerticalEdge = Math.abs(x % totalStep) < 10 && Math.abs(x % totalStep) > 7;
-        const onHorizontalEdge = Math.abs(z % totalStep) < 10 && Math.abs(z % totalStep) > 7;
-
-        if (onVerticalEdge || onHorizontalEdge) {
-          const pole = new THREE.Mesh(poleGeo, poleMat);
-          pole.position.set(x, 3.75, z);
-          this.scene.add(pole);
-
-          const head = new THREE.Mesh(lampHeadGeo, lampHeadMat);
-          head.position.set(x, 7.5, z);
-          this.scene.add(head);
-
-          this.streetLights.push(head);
-        }
-      }
-    }
-  }
-
-  createVegetation() {
-    const trunkGeo = new THREE.CylinderGeometry(0.3, 0.45, 4.5, 6);
-    const trunkMat = new THREE.MeshLambertMaterial({ color: 0x5a3d28 });
-    const leavesGeo = new THREE.DodecahedronGeometry(2.5, 1);
-    const leavesMat = new THREE.MeshLambertMaterial({ color: 0x2d6a4f });
-
-    // Place trees in parks and sidewalks
-    const totalStep = this.blockSize + this.roadWidth;
-    for (let i = -4; i <= 4; i += 2) {
-      for (let j = -4; j <= 4; j += 2) {
-        const tx = (i + 0.5) * totalStep + 24;
-        const tz = (j + 0.5) * totalStep + 24;
-
-        const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-        trunk.position.set(tx, 2.25, tz);
-        this.scene.add(trunk);
-
-        const leaves = new THREE.Mesh(leavesGeo, leavesMat);
-        leaves.position.set(tx, 5.5, tz);
-        this.scene.add(leaves);
-
-        this.addCollider(tx, tz, 1.2, 1.2);
-      }
-    }
-  }
-
-  addCollider(x, z, width, depth) {
-    this.colliders.push({
+  addCityCollider(city, x, z, width, depth) {
+    city.colliders.push({
       minX: x - width / 2,
       maxX: x + width / 2,
       minZ: z - depth / 2,
@@ -888,7 +1055,34 @@ class CityWorld {
     });
   }
 
+  addCityInteractiveZone(city, config) {
+    const group = new THREE.Group();
+    group.position.copy(config.position);
+
+    const cylinder = new THREE.Mesh(
+      new THREE.CylinderGeometry(2.2, 2.2, 0.35, 24),
+      new THREE.MeshBasicMaterial({ color: config.color, transparent: true, opacity: 0.65 })
+    );
+    group.add(cylinder);
+
+    const beam = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.4, 1.2, 7.5, 16, 1, true),
+      new THREE.MeshBasicMaterial({ color: config.color, transparent: true, opacity: 0.35 })
+    );
+    beam.position.y = 3.6;
+    group.add(beam);
+
+    city.group.add(group);
+
+    city.interactives.push({
+      ...config,
+      meshGroup: group,
+      radius: 4.2
+    });
+  }
+
   checkCollision(x, z, radius = 0.5) {
+    // 1. Check streamed active city colliders
     for (let i = 0; i < this.colliders.length; i++) {
       const c = this.colliders[i];
       if (
@@ -900,45 +1094,13 @@ class CityWorld {
         return true;
       }
     }
-    const maxBound = this.citySize / 2 - 15;
-    if (Math.abs(x) > maxBound || Math.abs(z) > maxBound) {
+
+    // 2. Global Sea Boundary check
+    if (Math.abs(x) > this.seaBoundary || Math.abs(z) > this.seaBoundary) {
       return true;
     }
+
     return false;
-  }
-
-  addInteractiveZone(config) {
-    const group = new THREE.Group();
-    group.position.copy(config.position);
-
-    const cylinderGeo = new THREE.CylinderGeometry(2.2, 2.2, 0.35, 24);
-    const cylinderMat = new THREE.MeshBasicMaterial({
-      color: config.color,
-      transparent: true,
-      opacity: 0.65
-    });
-    const cylinder = new THREE.Mesh(cylinderGeo, cylinderMat);
-    cylinder.position.y = 0.18;
-    group.add(cylinder);
-
-    const beamGeo = new THREE.CylinderGeometry(0.7, 1.3, 7, 16, 1, true);
-    const beamMat = new THREE.MeshBasicMaterial({
-      color: config.color,
-      transparent: true,
-      opacity: 0.3,
-      side: THREE.DoubleSide
-    });
-    const beam = new THREE.Mesh(beamGeo, beamMat);
-    beam.position.y = 3.6;
-    group.add(beam);
-
-    this.scene.add(group);
-
-    this.interactiveSpots.push({
-      ...config,
-      meshGroup: group,
-      radius: 4.0
-    });
   }
 
   getNearestInteractive(pos, maxDist = 4.5) {
@@ -952,7 +1114,14 @@ class CityWorld {
     return null;
   }
 
-  update(delta) {
+  update(delta, playerPos) {
+    // Dynamic city streaming
+    if (playerPos) {
+      this.updateStreaming(playerPos);
+      this.checkSeaBoundary(playerPos);
+    }
+
+    // Animate active interactive beacons
     for (let i = 0; i < this.interactiveSpots.length; i++) {
       const spot = this.interactiveSpots[i];
       if (spot.meshGroup) {

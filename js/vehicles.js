@@ -3,9 +3,10 @@
 // ============================================================
 
 class VehicleManager {
-  constructor(scene, world) {
+  constructor(scene, world, game = null) {
     this.scene = scene;
     this.world = world;
+    this.game = game;
     this.vehicles = [];
     this.activeVehicle = null;
 
@@ -566,10 +567,11 @@ class VehicleManager {
   // VEHICLE INTERACTION & SIMULATION LOOP
   // ------------------------------------------------------------
 
-  getNearestVehicle(pos, maxDist = 4.2) {
+  getNearestVehicle(pos, maxDist = 4.5) {
     let nearest = null;
     let minDist = maxDist;
 
+    // 1. Check all standard spawned / owned vehicles
     for (let i = 0; i < this.vehicles.length; i++) {
       const v = this.vehicles[i];
       if (v === this.activeVehicle) continue;
@@ -579,10 +581,97 @@ class VehicleManager {
         nearest = v;
       }
     }
+
+    // 2. Also check all ambient traffic cars on roads!
+    const game = this.game || window.game;
+    if (game && game.pedestrianManager && game.pedestrianManager.trafficCars) {
+      const traffic = game.pedestrianManager.trafficCars;
+      for (let i = 0; i < traffic.length; i++) {
+        const tc = traffic[i];
+        if (tc.isHijacked) continue;
+        const d = pos.distanceTo(tc.group.position);
+        if (d < minDist) {
+          minDist = d;
+          nearest = {
+            isTrafficCar: true,
+            trafficCarRef: tc,
+            group: tc.group,
+            spec: {
+              id: 'traffic_sedan',
+              name: tc.name || 'City Traffic Car',
+              type: 'sedan',
+              maxSpeed: 44,
+              accel: 24,
+              brake: 36,
+              steerSpeed: 2.4,
+              color: 0x34495e,
+              hasSiren: false
+            }
+          };
+        }
+      }
+    }
+
     return nearest;
   }
 
   enterVehicle(vehicle, player) {
+    // Check if commandeering an ambient traffic car
+    if (vehicle.isTrafficCar) {
+      const tc = vehicle.trafficCarRef;
+      const game = this.game || window.game;
+      if (game && game.pedestrianManager) {
+        const idx = game.pedestrianManager.trafficCars.indexOf(tc);
+        if (idx !== -1) game.pedestrianManager.trafficCars.splice(idx, 1);
+      }
+
+      const newVeh = {
+        spec: vehicle.spec,
+        group: vehicle.group,
+        isPlayerDriving: true,
+        speed: 0,
+        steering: 0,
+        condition: 100,
+        hasNitro: true,
+        nitroFuel: 100,
+        nitroActive: false,
+        nitroFlame: null,
+        tuningStage: 0,
+        sirenActive: false
+      };
+
+      // Nitro exhaust flame
+      const flameGeo = new THREE.ConeGeometry(0.35, 1.2, 8);
+      const flameMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff, transparent: true, opacity: 0.85 });
+      const flame = new THREE.Mesh(flameGeo, flameMat);
+      flame.rotation.x = Math.PI / 2;
+      flame.position.set(0, 0.4, -2.4);
+      flame.visible = false;
+      newVeh.group.add(flame);
+      newVeh.nitroFlame = flame;
+
+      this.vehicles.push(newVeh);
+      this.activeVehicle = newVeh;
+
+      // Driver drops wallet & police alerted!
+      if (game && game.economy) {
+        const dropPos = vehicle.group.position.clone().add(new THREE.Vector3(2, 0.5, 0));
+        game.economy.spawnCashPickup(dropPos, 180 + Math.floor(Math.random() * 240));
+      }
+      if (player && player.addPoliceHeat) {
+        player.addPoliceHeat(1);
+      }
+
+      window.soundManager.playHorn();
+      window.soundManager.startEngine();
+
+      if (window.gameUI) {
+        window.gameUI.showNotification(`🚗 Commandeered ${vehicle.spec.name}! (Driver dropped cash)`, 'warning', 5000);
+        window.gameUI.updateVehicleHUD(newVeh);
+      }
+      return;
+    }
+
     this.activeVehicle = vehicle;
     vehicle.isPlayerDriving = true;
     vehicle.speed = 0;

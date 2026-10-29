@@ -72,6 +72,122 @@ class SoundManager {
   // SOUND EFFECTS
   // ------------------------------------------------------------
 
+  playHandcuffsSound() {
+    this.ensureContext();
+    if (!this.ctx || this.isMuted) return;
+
+    // Metallic ratchet click click
+    const t = this.ctx.currentTime;
+    [0, 0.12, 0.22].forEach((offset, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(2400 - idx * 300, t + offset);
+      osc.frequency.exponentialRampToValueAtTime(800, t + offset + 0.04);
+
+      gain.gain.setValueAtTime(0.4, t + offset);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + offset + 0.05);
+
+      osc.connect(gain);
+      gain.connect(this.sfxGain);
+      osc.start(t + offset);
+      osc.stop(t + offset + 0.06);
+    });
+  }
+
+  playAlarmSound() {
+    this.ensureContext();
+    if (!this.ctx || this.isMuted) return;
+
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+
+    // Rapid alternating emergency two-tone
+    osc.frequency.setValueAtTime(1400, t);
+    osc.frequency.setValueAtTime(950, t + 0.12);
+    osc.frequency.setValueAtTime(1400, t + 0.24);
+    osc.frequency.setValueAtTime(950, t + 0.36);
+
+    gain.gain.setValueAtTime(0.35, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+
+    osc.connect(gain);
+    gain.connect(this.sfxGain);
+    osc.start(t);
+    osc.stop(t + 0.52);
+  }
+
+  playTaserSound() {
+    this.ensureContext();
+    if (!this.ctx || this.isMuted) return;
+
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(80 + Math.random() * 40, t);
+
+    // Stun shock buzz
+    gain.gain.setValueAtTime(0.4, t);
+    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.18);
+
+    osc.connect(gain);
+    gain.connect(this.sfxGain);
+    osc.start(t);
+    osc.stop(t + 0.2);
+  }
+
+  playDoorChime() {
+    this.ensureContext();
+    if (!this.ctx || this.isMuted) return;
+
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+
+    // Store entrance ding-dong
+    osc.frequency.setValueAtTime(880, t); // A5
+    osc.frequency.setValueAtTime(659.25, t + 0.18); // E5
+
+    gain.gain.setValueAtTime(0.25, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+
+    osc.connect(gain);
+    gain.connect(this.sfxGain);
+    osc.start(t);
+    osc.stop(t + 0.6);
+  }
+
+  playBustedJingle() {
+    this.ensureContext();
+    if (!this.ctx || this.isMuted) return;
+
+    const t = this.ctx.currentTime;
+    // Low dramatic minor brass hit: C3 -> Eb3 -> G3 -> C2
+    [
+      { freq: 130.81, time: 0, dur: 0.8 },
+      { freq: 155.56, time: 0.18, dur: 0.8 },
+      { freq: 196.0, time: 0.36, dur: 0.9 },
+      { freq: 65.41, time: 0.54, dur: 1.6 }
+    ].forEach(note => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(note.freq, t + note.time);
+
+      gain.gain.setValueAtTime(0.45, t + note.time);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + note.time + note.dur);
+
+      osc.connect(gain);
+      gain.connect(this.sfxGain);
+      osc.start(t + note.time);
+      osc.stop(t + note.time + note.dur + 0.05);
+    });
+  }
+
   playCash() {
     this.ensureContext();
     if (!this.ctx || this.isMuted) return;

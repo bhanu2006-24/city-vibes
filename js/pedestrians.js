@@ -12,6 +12,7 @@ class PedestrianManager {
     this.policeCruiser = null;
     this.policeSirenTimer = 0;
     this.brandishAlertTimer = 0;
+    this.copAttackTimer = 0;
   }
 
   init() {
@@ -476,6 +477,30 @@ class PedestrianManager {
           diff.normalize();
           this.policeCruiser.group.position.addScaledVector(diff, this.policeCruiser.speed * delta);
           this.policeCruiser.group.rotation.y = Math.atan2(diff.x, diff.z);
+        }
+
+        // Cops Attack & Subdue (Shoot / Taser / PIT maneuver)
+        if (dist < 15.0) {
+          this.copAttackTimer += delta;
+          if (this.copAttackTimer > 1.25) {
+            this.copAttackTimer = 0;
+            const player = window.game.player;
+            if (player && !player.isBusted) {
+              if (window.soundManager) window.soundManager.playGunshot(false);
+              player.takeDamage(15, 'police');
+
+              if (window.gameUI) {
+                window.gameUI.showNotification('⚡ POLICE: "Suspect is resisting! Taser deployed! Drop to the ground!"', 'error', 3000);
+              }
+            }
+          }
+        }
+
+        // Ramming player vehicle
+        if (dist < 4.0 && window.game && window.game.vehicleManager && window.game.vehicleManager.activeVehicle) {
+          const v = window.game.vehicleManager.activeVehicle;
+          v.speed *= 0.6;
+          v.condition = Math.max(10, (v.condition || 100) - 8);
         }
 
         // Flashing police strobe
