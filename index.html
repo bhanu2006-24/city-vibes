@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>City Vibes 3D - Open World City & Empire</title>
+  <link rel="stylesheet" href="css/style.css">
+  <!-- Three.js CDN (r128) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+  <!-- WebGL Canvas Container -->
+  <div id="canvas-container"></div>
+
+  <!-- Reticle Crosshair -->
+  <div id="reticle-crosshair"></div>
+
+  <!-- HUD Container -->
+  <div id="hud-container">
+    <!-- Top Left: Financials & Health -->
+    <div class="hud-top-left">
+      <div class="hud-panel balance-row">
+        <div class="balance-item cash-val">
+          <span class="label">CASH</span>
+          <span id="hud-cash">$3,500</span>
+        </div>
+        <div class="balance-item bank-val">
+          <span class="label">BANK</span>
+          <span id="hud-bank">$5,000</span>
+        </div>
+      </div>
+
+      <div class="hud-panel bars-container">
+        <div>
+          <div style="display:flex; justify-content:space-between; font-size:10px; font-weight:700; color:#cbd5e1; margin-bottom:2px;">
+            <span>HEALTH</span>
+          </div>
+          <div class="stat-bar">
+            <div id="hud-health-fill" class="stat-bar-fill health-fill" style="width: 100%;"></div>
+          </div>
+        </div>
+        <div style="display: none;">
+          <div style="display:flex; justify-content:space-between; font-size:10px; font-weight:700; color:#00f0ff; margin-bottom:2px;">
+            <span>ARMOR</span>
+          </div>
+          <div class="stat-bar">
+            <div id="hud-armor-fill" class="stat-bar-fill armor-fill" style="width: 0%;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Right: Minimap Radar -->
+    <div class="hud-top-right">
+      <div class="minimap-wrapper">
+        <canvas id="minimap-canvas" width="170" height="170"></canvas>
+      </div>
+    </div>
+
+    <!-- Notification Toasts Stack -->
+    <div id="notification-container"></div>
+
+    <!-- Center Prompt -->
+    <div id="hud-interact-prompt">[E] Drive Vehicle</div>
+
+    <!-- Driving Speedometer -->
+    <div id="hud-speedometer">
+      <span id="speed-value" class="speed-num">0</span>
+      <span class="speed-unit">MPH</span>
+    </div>
+
+    <!-- Job Mission Status Card -->
+    <div id="hud-job-card">
+      <div id="job-card-title">🚑 AMBULANCE EMERGENCY</div>
+      <div id="job-card-desc">Proceed to: Patient at Downtown Crosswalk</div>
+      <div id="job-card-timer">⏱️ TIME: 60s</div>
+    </div>
+
+    <!-- Phone Launcher Button -->
+    <button id="phone-toggle-btn" title="Open Smartphone (Press P or C)">📱</button>
+  </div>
+
+  <!-- In-Game Smartphone ("VibePhone 16 Pro") -->
+  <div id="smartphone-modal">
+    <div class="phone-notch"></div>
+    <div class="phone-screen">
+      <div id="phone-screen-content">
+        <!-- Rendered dynamically by GameUI -->
+      </div>
+      <div class="phone-bottom-bar">
+        <div id="phone-home-btn" title="Return to Home Screen"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Smartphone Camera Viewfinder Overlay -->
+  <div id="camera-viewfinder">
+    <div class="camera-grid-line h1"></div>
+    <div class="camera-grid-line h2"></div>
+    <div class="camera-grid-line v1"></div>
+    <div class="camera-grid-line v2"></div>
+
+    <div class="camera-header-bar">
+      <span>● REC 4K 60FPS | AI TARGET ANALYSIS ACTIVE</span>
+    </div>
+
+    <!-- Target Recognition Bounding Box -->
+    <div id="camera-target-box">
+      <div id="camera-target-status">TARGET: UNKNOWN</div>
+    </div>
+
+    <!-- Big Center Shutter Button -->
+    <button id="camera-shutter-btn" onclick="window.game.cameraSystem.capturePhoto()" title="Snap Photo Proof"></button>
+  </div>
+
+  <!-- Camera White Flash Effect -->
+  <div id="camera-flash"></div>
+
+  <!-- Car Dealership Modal -->
+  <div id="cardealer-modal" class="game-modal">
+    <div class="modal-header">
+      <h2>🏎️ Apex Exotic Motors</h2>
+      <button class="modal-close-btn">&times;</button>
+    </div>
+    <div id="cardealer-list" class="modal-body"></div>
+  </div>
+
+  <!-- Clothes Boutique Modal -->
+  <div id="clothes-modal" class="game-modal">
+    <div class="modal-header">
+      <h2>👔 Urban Threads Boutique</h2>
+      <button class="modal-close-btn">&times;</button>
+    </div>
+    <div id="clothes-list" class="modal-body"></div>
+  </div>
+
+  <!-- Armory & Black Market Modal -->
+  <div id="armory-modal" class="game-modal">
+    <div class="modal-header">
+      <h2>🔫 Underground Armory</h2>
+      <button class="modal-close-btn">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="shop-item-card">
+        <h4>Heavy Kevlar Body Armor</h4>
+        <p style="font-size:12px; color:#aaa;">Absorbs 100 ballistic hit points.</p>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+          <span style="color:#2ecc71; font-weight:bold;">$1,000</span>
+          <button class="btn btn-primary btn-sm" onclick="window.game.economy.buyArmoryItem('armor', 1000)">Buy Armor</button>
+        </div>
+      </div>
+      <div class="shop-item-card">
+        <h4>Ghost Marksman Sniper Rifle</h4>
+        <p style="font-size:12px; color:#aaa;">High-caliber silenced precision rifle. Instant takedown.</p>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+          <span style="color:#2ecc71; font-weight:bold;">$8,500</span>
+          <button class="btn btn-primary btn-sm" onclick="window.game.economy.buyArmoryItem('sniper', 8500)">Buy Rifle</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bounty Claimed Victory Modal -->
+  <div id="bounty-reward-modal">
+    <h3 style="color:#2ecc71; font-size:22px;">🎯 BOUNTY CONFIRMED & CLAIMED!</h3>
+    <p style="color:#aaa; font-size:14px; margin-top:4px;">Photographic proof verified by Guild Handler.</p>
+    <div style="margin:12px 0; font-size:16px;">Target Eliminated: <strong id="bounty-target-name"></strong></div>
+    <div id="bounty-amount-text" class="bounty-amount">+$15,000</div>
+    <p style="color:#cbd5e1; font-size:12px;">Funds wired directly to your wallet.</p>
+  </div>
+
+  <!-- Game Scripts -->
+  <script src="js/audio.js"></script>
+  <script src="js/world.js"></script>
+  <script src="js/vehicles.js"></script>
+  <script src="js/pedestrians.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/camera-system.js"></script>
+  <script src="js/economy.js"></script>
+  <script src="js/jobs.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/game.js"></script>
+
+</body>
+</html>
+
