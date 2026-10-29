@@ -4,47 +4,58 @@ A complete 3D open-world city simulation game built with **Vanilla JavaScript, H
 
 ---
 
-## 🎮 Features Overview
+## 🎮 New & Advanced Gameplay Features
 
-### 1. 🚶‍♂️ Smooth Player Movement & Dynamic Camera
-- **Slide-Collision Resolution**: Axis-separated collision detection ensures you never freeze or get stuck against walls, curbs, or buildings.
-- **Controls**: Walk/run with `WASD` or Arrow keys, sprint with `Shift`, jump with `Space`, and look around by moving or dragging the mouse (or `Q` / `E` / Arrow keys).
-- **Clickable Interaction Banner**: Click on the HUD prompt or press `E` / `F` to enter/exit vehicles and enter stores.
+### 1. 🎥 View Modes: TPS & FPS (Third-Person & First-Person Shooter)
+- **Toggle View Mode (`V` key or click the HUD pill)**:
+  - **Third-Person Shooter (TPS)**: Classic follow-camera with smooth orbital movement, character animations, and peripheral vision.
+  - **First-Person Shooter (FPS)**: True eye-level camera view with 3D first-person weapon viewmodel, authentic weapon bobbing, and precision aim!
 
-### 2. 👤 Character Studio & Customizer
-- Customize your character in real-time through the **Urban Threads Store** or the **Creator App** on your smartphone:
+### 2. 🛡️ Weapon Concealment, Public Chaos & Police Alerts
+- **Civilian Cover**: You start **Unarmed / Fists**. As long as weapons are holstered, you blend in seamlessly as an innocent citizen.
+- **Brandishing in Public (`G` key to Draw / Holster)**:
+  - Taking a firearm out on the street causes **immediate public chaos**: pedestrians scream, panic, throw their arms up, and sprint away in terror.
+  - If a gun is brandished in public for more than 2.5 seconds, pedestrians call 911, and your **Police Wanted Level (⭐ Stars)** rises!
+- **Police Pursuit System**:
+  - When Wanted (⭐ 1-5 Stars), a black-and-white Police Cruiser with flashing strobe lights and pursuit sirens is dispatched to chase and intercept you!
+  - **Evade the Police**: Holster your weapon (`G`), break line of sight, or retreat to an owned safehouse to cool down your heat.
+
+### 3. 🎯 Silenced Weapons & Military Sniper Scope (The Hitman Mechanic)
+- **Discreet Assassinations**:
+  - Killing someone up close in broad daylight with an unsilenced weapon alerts the entire city and triggers an immediate 3-Star Police manhunt!
+  - Buy specialized silenced weapons at the **Underground Armory**:
+    - **Silenced 9mm Hitman Special** ($3,500)
+    - **Ghost Marksman Silenced Sniper (With 8x Tactical Scope)** ($9,000)
+- **8x Mil-Dot Sniper Scope (Hold Right Click)**:
+  - Hold **Right Click** while holding the sniper rifle to enter military sniper scope mode.
+  - Features circular scope vignette, red illuminated crosshairs, windage tick marks, and an **integrated real-time laser rangefinder** reading the exact distance to your target!
+  - Eliminate the syndicate target from long range (>20m) for a **Verified Silent Assassination** with zero police heat!
+- **Photographic Proof**:
+  - After taking down the target, draw your **Smartphone Camera (`C` key)**, frame the fallen target in your viewfinder, and snap the photo to claim your **$15,000 – $50,000 bounty**!
+
+### 4. 👤 Character Studio & Customizer
+- Customize your character in real-time through the **Urban Threads Store** or the **Creator App 👤** on your smartphone:
   - **Skin Tones**: Fair, Tan, Caramel, Deep, Bronze.
   - **Hair Styles & Colors**: Crew Cut, Slick, Afro, Punk Mohican (Jet Black, Chestnut Brown, Golden Blonde, Silver, Neon Pink).
   - **Headwear**: Fedora, Baseball Cap, Beanie, or None.
   - **Eyewear**: Aviator Sunglasses, Cyberpunk Visor, or None.
   - **Outfits**: Casual Streetwear, Paramedic Scrubs, Delivery Boy Cap & Vest, Taxi Driver Uniform, Hitman Black Suit & Tie, Cyberpunk Neon, and Gold Boss Tuxedo.
 
-### 3. 🔧 City Customs (Mechanic & Tuning Workshop)
+### 5. 🔧 City Customs (Mechanic & Tuning Workshop)
 - **Repair Service**: Restore vehicle condition to 100% ($200).
 - **Engine Performance Tuning**:
-  - Stock
-  - Stage 1 Street Tune (+15% top speed & acceleration, $2,500)
-  - Stage 2 Pro Racing (+30% top speed & acceleration, $6,500)
-  - Twin-Turbocharged (+50% top speed & acceleration, $14,000)
+  - Stage 1 Street Tune (+15% speed, $2,500)
+  - Stage 2 Pro Racing (+30% speed, $6,500)
+  - Twin-Turbocharged (+50% speed, $14,000)
 - **Nitro Boost (NOS)**: Install a Nitro kit ($3,500). Hold `Shift` while driving for an intense acceleration burst with exhaust flame effects!
 - **Custom Paint Workshop**: Apply custom gloss paint (Midnight Black, Cyber Cyan, Crimson Red, Taxi Yellow, Neon Purple, Pearl White, Emerald Green).
 
-### 4. 🚑 City Careers & Jobs
+### 6. 🚑 City Careers & Jobs
 - **Ambulance Paramedic**: 911 dispatch calls, race to pick up injured citizens, activate your flashing strobes and emergency siren (`J`), and deliver to St. Jude Hospital ER before time runs out.
 - **Pizza Delivery Boy**: Pick up piping hot orders from Luigi's Express Pizzeria and deliver them across town before the freshness timer expires for big tips.
 - **Metro Cab / Taxi Driver**: Pick up hailing pedestrians on city streets and drop them off at their desired destinations for metered fares.
 
-### 5. 🕷️ The Black Lotus Assassin's Guild & Bounty Photography
-- **Secret Syndicate Lair**: Located in the industrial harbor behind shipping containers, designated by a glowing crimson neon emblem.
-- **Contract Board**: Accept high-value bounties on corrupt officials, rival hitmen, mob bankers, and smugglers.
-- **Target Elimination & Photographic Proof**:
-  - Hunt down the target using stealth weapons (Silenced 9mm or Marksman Sniper).
-  - Eliminate the target, then pull out your **In-Game Smartphone Camera (`C` key)**.
-  - Frame the fallen target in the camera viewfinder — the built-in AI recognition software verifies target status.
-  - Snap the photo (`Click` / Shutter button) to transmit proof to the Guild Handler and collect your **bounty reward ($15,000 – $50,000)**!
-  - Browse your captured contract photos in the smartphone's **Photo Gallery** app.
-
-### 6. 🏢 Real Estate Empire & Passive Rental Yield
+### 7. 🏢 Real Estate Empire & Passive Rental Yield
 - **Buy Properties Across the City**:
   - Sunset Motel Studio ($3,500)
   - Maple Grove Suburb Bungalow ($24,000)
@@ -56,23 +67,6 @@ A complete 3D open-world city simulation game built with **Vanilla JavaScript, H
 - **Passive Rent Income**: Every 45 seconds, tenant rental income is automatically collected and deposited directly into your bank account!
 - **Renovations & Upgrades**: Upgrade properties to Level 2+ to boost rental yields by 50%+.
 
-### 7. 🏎️ Vehicles & Car Dealership (Apex Exotic Motors)
-- Drive realistic procedural 3D vehicles with suspension, headlights, exhaust physics, and drifting:
-  - **Rescue Ambulance** (Flashing red/blue emergency strobe lights + working siren `J`)
-  - **Metro City Taxi** (Illuminated roof cab sign)
-  - **Express Delivery Scooter** (Nimble moped with rear thermal carrier box)
-  - **Urban Commuter Sedan**
-  - **Viper 69 Muscle Car** (High acceleration & drifting)
-  - **Lotus Armored Enforcer** (Heavy syndicate SUV)
-  - **Apex GT Hypercar** (Ultra-fast wedge supercar)
-- **Garage Valet Summoner**: Open your phone's Garage App to have any owned vehicle delivered right next to you!
-
-### 8. 📻 Procedural Web Audio Synthesizer
-- **100% Procedural Audio**: Engine acceleration / pitch modulation, siren sound, gunshot effects, camera shutter & flash, coin chimes, and 3 procedural synth radio stations (`R` key to switch):
-  - *98.5 Neon Nights* (80s Synthwave)
-  - *104.2 Lo-Fi Vibes* (Chill jazz chords)
-  - *107.9 Cyber Pulse* (Driving techno)
-
 ---
 
 ## ⌨️ Controls & Keybindings
@@ -82,12 +76,15 @@ A complete 3D open-world city simulation game built with **Vanilla JavaScript, H
 | **W, A, S, D** / Arrows | Walk / Run / Drive (Steer & Accelerate) |
 | **Shift** | Sprint (on foot) / Trigger Nitro NOS (while driving) |
 | **Space** | Jump (on foot) / Handbrake drift (driving) |
-| **E** or **F** | Enter / Exit Vehicle OR Interact with Shops, Jobs, and Safehouses |
-| **Q, E** / Mouse Drag | Rotate Camera / Aim |
+| **V** | Toggle View Mode (TPS Third-Person <-> FPS First-Person) |
+| **G** | Toggle Weapon Holster (Concealed Civilian Cover <-> Drawn Weapon) |
+| **Right Click (Hold)** | Aim Down Sights / Military Mil-Dot Sniper Scope (8x Zoom) |
 | **Left Click** | Attack / Fire Weapon / Snap Smartphone Photo |
+| **E** or **F** | Enter / Exit Vehicle OR Interact with Shops, Jobs, and Safehouses |
+| **Q, E** / Mouse Look | Rotate Camera / Aim |
 | **C** | Toggle Smartphone Camera (Bounty Proof Viewfinder) |
 | **P** or 📱 button | Open / Close Smartphone ("VibePhone 16 Pro") |
-| **1, 2, 3** | Switch Weapons (Fists / Silenced 9mm / Sniper) |
+| **1, 2, 3** | Switch Weapons (1: Unarmed / 2: Silenced 9mm / 3: Silenced Sniper) |
 | **H** | Car Horn |
 | **J** | Ambulance Siren Toggle |
 | **R** | Switch Radio Station |
@@ -102,4 +99,4 @@ A complete 3D open-world city simulation game built with **Vanilla JavaScript, H
    ```bash
    python3 -m http.server 8080
    ```
-   and visit `http://localhost:8080`!
+   and navigate to `http://localhost:8080`!

@@ -308,14 +308,37 @@ class EconomyManager {
   }
 
   buyArmoryItem(itemId, price) {
+    if (this.game.player.ownedWeapons.includes(itemId) && itemId !== 'armor') {
+      this.game.player.currentWeaponKey = itemId;
+      this.game.player.isWeaponDrawn = true;
+      this.game.player.updateWeaponVisibility();
+      window.gameUI.showNotification(`Equipped: ${this.game.player.weapons[itemId].name}!`, 'info');
+      return true;
+    }
+
     if (this.spendCash(price)) {
       window.soundManager.playCash();
       if (itemId === 'armor') {
         this.game.player.armor = 100;
-        window.gameUI.showNotification('🛡️ Body Armor Equipped (+100 Armor)', 'success');
-      } else if (itemId === 'sniper') {
-        this.game.player.currentWeaponIdx = 2; // Equip sniper
-        window.gameUI.showNotification('🔫 Ghost Marksman Sniper Acquired!', 'success');
+        window.gameUI.showNotification('🛡️ Heavy Kevlar Body Armor Equipped (+100 Armor)', 'success');
+      } else if (itemId === 'pistol_silenced') {
+        if (!this.game.player.ownedWeapons.includes('pistol_silenced')) {
+          this.game.player.ownedWeapons.push('pistol_silenced');
+        }
+        this.game.player.currentWeaponKey = 'pistol_silenced';
+        this.game.player.isWeaponDrawn = false; // Holstered by default for safety!
+        this.game.player.buildFpsViewModel();
+        this.game.player.updateWeaponVisibility();
+        window.gameUI.showNotification('🔫 Silenced 9mm Acquired & Holstered! Press [G] to draw when ready.', 'success', 6000);
+      } else if (itemId === 'sniper_silenced') {
+        if (!this.game.player.ownedWeapons.includes('sniper_silenced')) {
+          this.game.player.ownedWeapons.push('sniper_silenced');
+        }
+        this.game.player.currentWeaponKey = 'sniper_silenced';
+        this.game.player.isWeaponDrawn = false;
+        this.game.player.buildFpsViewModel();
+        this.game.player.updateWeaponVisibility();
+        window.gameUI.showNotification('🎯 Ghost Marksman Silenced Sniper Acquired! Press [G] to draw, Right Click to Aim Scope!', 'success', 7000);
       }
       this.saveState();
       return true;

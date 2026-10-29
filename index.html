@@ -16,9 +16,31 @@
   <!-- Reticle Crosshair -->
   <div id="reticle-crosshair"></div>
 
+  <!-- Military Sniper Scope Overlay -->
+  <div id="sniper-scope-overlay">
+    <div class="scope-vignette"></div>
+    <div class="scope-crosshair-h"></div>
+    <div class="scope-crosshair-v"></div>
+    <div class="scope-circle-outer"></div>
+    <div class="scope-circle-inner"></div>
+    <!-- Mil-Dot Tick Marks -->
+    <div class="scope-ticks">
+      <span class="tick t1"></span>
+      <span class="tick t2"></span>
+      <span class="tick t3"></span>
+      <span class="tick t4"></span>
+    </div>
+    <!-- Tactical Rangefinder Telemetry -->
+    <div class="scope-telemetry">
+      <div>RANGE: <strong id="scope-target-distance" style="color:#00f0ff;">--m</strong></div>
+      <div>OPTICS: <strong>8X MIL-DOT</strong></div>
+      <div>SUPPRESSOR: <strong style="color:#2ecc71;">ACTIVE</strong></div>
+    </div>
+  </div>
+
   <!-- HUD Container -->
   <div id="hud-container">
-    <!-- Top Left: Financials & Health -->
+    <!-- Top Left: Financials & Health & Status -->
     <div class="hud-top-left">
       <div class="hud-panel balance-row">
         <div class="balance-item cash-val">
@@ -49,10 +71,22 @@
           </div>
         </div>
       </div>
+
+      <!-- Quick Toggles: View Mode & Holster Status -->
+      <div class="hud-status-row">
+        <div id="hud-viewmode-pill" class="status-pill pill-interactive" onclick="if(window.game) window.game.player.toggleViewMode();" title="Click or Press V to toggle Third-Person / First-Person View">
+          🎥 TPS
+        </div>
+        <div id="hud-holster-pill" class="status-pill pill-safe pill-interactive" onclick="if(window.game) window.game.player.toggleHolster();" title="Click or Press G to Conceal / Draw Weapon">
+          🛡️ CONCEALED (CIVILIAN)
+        </div>
+      </div>
     </div>
 
-    <!-- Top Right: Minimap Radar -->
+    <!-- Top Right: Minimap Radar & Police Heat -->
     <div class="hud-top-right">
+      <!-- Police Wanted Stars (1 to 5 Stars) -->
+      <div id="hud-wanted-stars" class="wanted-stars-container" style="display:none;"></div>
       <div class="minimap-wrapper">
         <canvas id="minimap-canvas" width="170" height="170"></canvas>
       </div>
@@ -155,24 +189,7 @@
       <h2>🔫 Underground Armory</h2>
       <button class="modal-close-btn">&times;</button>
     </div>
-    <div class="modal-body">
-      <div class="shop-item-card">
-        <h4>Heavy Kevlar Body Armor</h4>
-        <p style="font-size:12px; color:#aaa;">Absorbs 100 ballistic hit points.</p>
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
-          <span style="color:#2ecc71; font-weight:bold;">$1,000</span>
-          <button class="btn btn-primary btn-sm" onclick="window.game.economy.buyArmoryItem('armor', 1000)">Buy Armor</button>
-        </div>
-      </div>
-      <div class="shop-item-card">
-        <h4>Ghost Marksman Sniper Rifle</h4>
-        <p style="font-size:12px; color:#aaa;">High-caliber silenced precision rifle. Instant takedown.</p>
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
-          <span style="color:#2ecc71; font-weight:bold;">$8,500</span>
-          <button class="btn btn-primary btn-sm" onclick="window.game.economy.buyArmoryItem('sniper', 8500)">Buy Rifle</button>
-        </div>
-      </div>
-    </div>
+    <div class="modal-body"></div>
   </div>
 
   <!-- Bounty Claimed Victory Modal -->

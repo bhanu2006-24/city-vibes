@@ -128,7 +128,10 @@ class CityGame {
     let lastMouseY = 0;
     let isDragging = false;
 
-    // Canvas click to request pointer lock & attack/photo
+    // Prevent default context menu on right click so right click can be used for sniper scope!
+    window.addEventListener('contextmenu', e => e.preventDefault());
+
+    // Canvas click to request pointer lock & attack/photo/scope
     this.renderer.domElement.addEventListener('mousedown', e => {
       window.soundManager.ensureContext();
       isDragging = true;
@@ -139,6 +142,13 @@ class CityGame {
         return;
       }
 
+      // Right Click = Aim Scope / Iron Sights
+      if (e.button === 2) {
+        this.player.setScopeAim(true);
+        return;
+      }
+
+      // Left Click = Fire / Snap Photo
       if (this.cameraSystem.isActive) {
         this.cameraSystem.capturePhoto();
       } else {
@@ -155,8 +165,11 @@ class CityGame {
       }
     });
 
-    window.addEventListener('mouseup', () => {
+    window.addEventListener('mouseup', e => {
       isDragging = false;
+      if (e.button === 2) {
+        this.player.setScopeAim(false);
+      }
     });
 
     document.addEventListener('pointerlockchange', () => {
@@ -202,6 +215,16 @@ class CityGame {
         this.handleInteraction();
       }
 
+      // Toggle View Mode (TPS <-> FPS) ('KeyV')
+      if (code === 'KeyV' || key === 'v') {
+        this.player.toggleViewMode();
+      }
+
+      // Toggle Weapon Holster / Concealment ('KeyG')
+      if (code === 'KeyG' || key === 'g') {
+        this.player.toggleHolster();
+      }
+
       // Smartphone Camera ('KeyC')
       if (code === 'KeyC' || key === 'c') {
         this.cameraSystem.toggleCamera();
@@ -230,14 +253,38 @@ class CityGame {
 
       // Weapon selection ('1', '2', '3')
       if (code === 'Digit1' || key === '1') {
-        this.player.currentWeaponIdx = 0;
-        this.ui.showNotification('Equipped: Unarmed / Fists', 'weapon');
+        this.player.currentWeaponKey = 'fists';
+        this.player.isWeaponDrawn = false;
+        this.player.isConcealed = true;
+        this.player.setScopeAim(false);
+        this.player.buildFpsViewModel();
+        this.player.updateWeaponVisibility();
+        this.ui.showNotification('🛡️ Unarmed / Fists: Civilian Cover Active', 'weapon');
+        this.ui.updateHolsterHUD(false);
       } else if (code === 'Digit2' || key === '2') {
-        this.player.currentWeaponIdx = 1;
-        this.ui.showNotification('Equipped: Silenced 9mm Pistol', 'weapon');
+        if (this.player.ownedWeapons.includes('pistol_silenced')) {
+          this.player.currentWeaponKey = 'pistol_silenced';
+          this.player.isWeaponDrawn = true;
+          this.player.isConcealed = false;
+          this.player.buildFpsViewModel();
+          this.player.updateWeaponVisibility();
+          this.ui.showNotification('🔫 Drawn: Silenced 9mm Hitman Special', 'weapon');
+          this.ui.updateHolsterHUD(true);
+        } else {
+          this.ui.showNotification('❌ Silenced 9mm not owned! Buy at Underground Armory.', 'warning');
+        }
       } else if (code === 'Digit3' || key === '3') {
-        this.player.currentWeaponIdx = 2;
-        this.ui.showNotification('Equipped: Ghost Marksman Sniper', 'weapon');
+        if (this.player.ownedWeapons.includes('sniper_silenced')) {
+          this.player.currentWeaponKey = 'sniper_silenced';
+          this.player.isWeaponDrawn = true;
+          this.player.isConcealed = false;
+          this.player.buildFpsViewModel();
+          this.player.updateWeaponVisibility();
+          this.ui.showNotification('🎯 Drawn: Silenced Sniper Rifle! Hold Right Click to Aim Scope!', 'weapon');
+          this.ui.updateHolsterHUD(true);
+        } else {
+          this.ui.showNotification('❌ Sniper Rifle not owned! Buy at Underground Armory.', 'warning');
+        }
       }
 
       // Escape key to close modals/phone/camera

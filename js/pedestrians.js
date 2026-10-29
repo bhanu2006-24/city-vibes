@@ -1,5 +1,5 @@
 // ============================================================
-// CITY VIBES - PEDESTRIANS, TRAFFIC & ASSASSINATION TARGETS
+// CITY VIBES - PEDESTRIANS, TRAFFIC, GUILD TARGETS & POLICE AI
 // ============================================================
 
 class PedestrianManager {
@@ -8,26 +8,28 @@ class PedestrianManager {
     this.world = world;
     this.pedestrians = [];
     this.trafficCars = [];
-    this.targets = []; // Active assassin guild targets
-    this.nextTargetId = 1;
+    this.targets = [];
+    this.policeCruiser = null;
+    this.policeSirenTimer = 0;
+    this.brandishAlertTimer = 0;
   }
 
   init() {
-    this.spawnAmbientPedestrians(24);
+    this.spawnAmbientPedestrians(26);
     this.spawnAmbientTraffic(10);
   }
 
   // ------------------------------------------------------------
-  // AMBIENT PEDESTRIANS
+  // AMBIENT PEDESTRIANS & PANIC REACTION
   // ------------------------------------------------------------
 
-  spawnAmbientPedestrians(count = 20) {
+  spawnAmbientPedestrians(count = 26) {
     const totalStep = this.world.blockSize + this.world.roadWidth;
     const colors = [0x34495e, 0x16a085, 0x8e44ad, 0xd35400, 0x2c3e50, 0x7f8c8d];
 
     for (let i = 0; i < count; i++) {
-      const rx = (Math.random() - 0.5) * 450;
-      const rz = (Math.random() - 0.5) * 450;
+      const rx = (Math.random() - 0.5) * 440;
+      const rz = (Math.random() - 0.5) * 440;
       const col = colors[Math.floor(Math.random() * colors.length)];
 
       const pedMesh = this.createHumanoidMesh(col, false);
@@ -40,9 +42,55 @@ class PedestrianManager {
         speed: 1.8 + Math.random() * 1.2,
         direction: new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle)),
         changeTimer: 3 + Math.random() * 5,
+        isPanicked: false,
+        panicTimer: 0,
         isDead: false,
         isTarget: false
       });
+    }
+  }
+
+  triggerPublicBrandishPanic(playerPos) {
+    let witnessCount = 0;
+
+    for (let i = 0; i < this.pedestrians.length; i++) {
+      const p = this.pedestrians[i];
+      if (p.isDead) continue;
+
+      const dist = p.mesh.position.distanceTo(playerPos);
+      if (dist < 22) {
+        witnessCount++;
+        p.isPanicked = true;
+        p.panicTimer = 6.0;
+        p.speed = 8.5; // sprint in terror!
+
+        // Run directly away from player
+        const awayDir = p.mesh.position.clone().sub(playerPos);
+        awayDir.y = 0;
+        awayDir.normalize();
+        p.direction.copy(awayDir);
+
+        // Raise arms in surrender / panic
+        const u = p.mesh.userData;
+        u.armL.rotation.z = 2.4;
+        u.armR.rotation.z = -2.4;
+      }
+    }
+
+    // If citizens witness weapon in public -> dispatch police!
+    if (witnessCount > 0) {
+      this.brandishAlertTimer += 0.016;
+      if (this.brandishAlertTimer > 2.5) {
+        this.brandishAlertTimer = 0;
+        if (window.game && window.game.player.wantedStars < 2) {
+          window.game.player.addPoliceHeat(1);
+          if (window.gameUI) {
+            window.gameUI.showNotification('🚨 911 CALL: "Citizen reported a gunman on the street!" Police dispatched!', 'error', 5000);
+          }
+        }
+      }
+    } else {
+      this.brandishAlertTimer = Math.max(0, this.brandishAlertTimer - 0.01);
     }
   }
 
@@ -59,7 +107,6 @@ class PedestrianManager {
     torso.castShadow = true;
     root.add(torso);
 
-    // Red Tie / Scarf for targets
     if (isTarget) {
       const tieGeo = new THREE.BoxGeometry(0.12, 0.5, 0.05);
       const tieMat = new THREE.MeshBasicMaterial({ color: 0xff0033 });
@@ -67,7 +114,6 @@ class PedestrianManager {
       tie.position.set(0, 1.25, 0.19);
       root.add(tie);
 
-      // Gold Watch / Briefcase
       const caseGeo = new THREE.BoxGeometry(0.5, 0.35, 0.12);
       const caseMat = new THREE.MeshLambertMaterial({ color: 0x4a2311 });
       const briefcase = new THREE.Mesh(caseGeo, caseMat);
@@ -77,13 +123,12 @@ class PedestrianManager {
 
     // Head
     const headGeo = new THREE.BoxGeometry(0.4, 0.4, 0.4);
-    const headMat = new THREE.MeshLambertMaterial({ color: 0xf5cba7 }); // skin tone
+    const headMat = new THREE.MeshLambertMaterial({ color: 0xf5cba7 });
     const head = new THREE.Mesh(headGeo, headMat);
     head.position.y = 1.85;
     head.castShadow = true;
     root.add(head);
 
-    // Hair / Sunglasses
     const hairGeo = new THREE.BoxGeometry(0.42, 0.16, 0.42);
     const hairMat = new THREE.MeshLambertMaterial({ color: isTarget ? 0x222222 : 0x4a2e1b });
     const hair = new THREE.Mesh(hairGeo, hairMat);
@@ -91,14 +136,12 @@ class PedestrianManager {
     root.add(hair);
 
     if (isTarget) {
-      // Sleek Dark Sunglasses
       const glassesGeo = new THREE.BoxGeometry(0.38, 0.08, 0.1);
       const glassesMat = new THREE.MeshBasicMaterial({ color: 0x050505 });
       const glasses = new THREE.Mesh(glassesGeo, glassesMat);
       glasses.position.set(0, 1.9, 0.21);
       root.add(glasses);
 
-      // Target overhead indicator ring (red holographic reticle)
       const ringGeo = new THREE.RingGeometry(0.4, 0.6, 16);
       const ringMat = new THREE.MeshBasicMaterial({
         color: 0xff0044,
@@ -157,7 +200,6 @@ class PedestrianManager {
   // ------------------------------------------------------------
 
   spawnContractTarget(contract) {
-    // Clear any previous target of the same contract
     this.removeTarget(contract.id);
 
     const mesh = this.createHumanoidMesh(0x111111, true, contract);
@@ -199,9 +241,6 @@ class PedestrianManager {
     if (target.isDead) return;
     target.health -= damage;
 
-    // Blood / Spark hit effect
-    if (window.soundManager) window.soundManager.playGunshot(true);
-
     if (target.health <= 0) {
       this.killTarget(target);
     }
@@ -211,18 +250,16 @@ class PedestrianManager {
     target.isDead = true;
     target.health = 0;
 
-    // Knock target over onto the ground (dead ragdoll posture)
     target.mesh.rotation.x = Math.PI / 2;
     target.mesh.position.y = 0.25;
 
-    // Hide glowing reticle
     if (target.mesh.reticle) {
       target.mesh.reticle.visible = false;
     }
 
     if (window.gameUI) {
       window.gameUI.showNotification(
-        `🎯 TARGET DOWN: ${target.name}! Pull out camera (C) and take a photo to claim $${target.bounty.toLocaleString()}!`,
+        `🎯 TARGET DOWN: ${target.name}! Open Camera (C), take a photo of the body to claim $${target.bounty.toLocaleString()}!`,
         'target_kill',
         7000
       );
@@ -230,7 +267,62 @@ class PedestrianManager {
   }
 
   // ------------------------------------------------------------
-  // AMBIENT TRAFFIC SIMULATION
+  // POLICE PATROL & PURSUIT CRUISER
+  // ------------------------------------------------------------
+
+  spawnPoliceCruiser(nearPos) {
+    if (this.policeCruiser) return;
+
+    const group = new THREE.Group();
+    group.position.copy(nearPos).add(new THREE.Vector3(30, 0.4, 30));
+
+    // Black & white police interceptor
+    const bodyGeo = new THREE.BoxGeometry(2.1, 0.75, 4.4);
+    const bodyMat = new THREE.MeshPhongMaterial({ color: 0x111111, shininess: 70 });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.position.y = 0.65;
+    group.add(body);
+
+    // White door panels
+    const doorGeo = new THREE.BoxGeometry(2.14, 0.5, 1.8);
+    const doorMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const doors = new THREE.Mesh(doorGeo, doorMat);
+    doors.position.set(0, 0.7, -0.1);
+    group.add(doors);
+
+    // Flashing Strobe Lightbar on roof
+    const barGeo = new THREE.BoxGeometry(1.4, 0.2, 0.3);
+    const barMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
+    const bar = new THREE.Mesh(barGeo, barMat);
+    bar.position.set(0, 1.7, -0.2);
+    group.add(bar);
+
+    const redLight = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.25, 0.35), new THREE.MeshBasicMaterial({ color: 0xff0022 }));
+    redLight.position.set(-0.45, 1.7, -0.2);
+    group.add(redLight);
+
+    const blueLight = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.25, 0.35), new THREE.MeshBasicMaterial({ color: 0x0066ff }));
+    blueLight.position.set(0.45, 1.7, -0.2);
+    group.add(blueLight);
+
+    this.scene.add(group);
+
+    this.policeCruiser = {
+      group: group,
+      speed: 28,
+      redLight: redLight,
+      blueLight: blueLight
+    };
+  }
+
+  removePoliceCruiser() {
+    if (!this.policeCruiser) return;
+    this.scene.remove(this.policeCruiser.group);
+    this.policeCruiser = null;
+  }
+
+  // ------------------------------------------------------------
+  // AMBIENT TRAFFIC
   // ------------------------------------------------------------
 
   spawnAmbientTraffic(count = 10) {
@@ -238,7 +330,6 @@ class PedestrianManager {
     const colors = [0x95a5a6, 0x34495e, 0x27ae60, 0x2980b9, 0xc0392b, 0xd35400];
 
     for (let i = 0; i < count; i++) {
-      // Pick a road lane
       const isVertical = Math.random() > 0.5;
       const roadCoord = (Math.floor(Math.random() * 5) - 2) * totalStep;
       const laneOffset = (Math.random() > 0.5 ? 1 : -1) * 4.5;
@@ -246,7 +337,6 @@ class PedestrianManager {
       const group = new THREE.Group();
       const col = colors[Math.floor(Math.random() * colors.length)];
 
-      // Simple traffic car mesh
       const bodyGeo = new THREE.BoxGeometry(2.0, 0.75, 4.2);
       const bodyMat = new THREE.MeshLambertMaterial({ color: col });
       const body = new THREE.Mesh(bodyGeo, bodyMat);
@@ -290,48 +380,56 @@ class PedestrianManager {
   // ------------------------------------------------------------
 
   update(delta) {
-    // 1. Update Ambient Pedestrians
+    // 1. Pedestrians
     for (let i = 0; i < this.pedestrians.length; i++) {
       const p = this.pedestrians[i];
       if (p.isDead) continue;
 
-      p.changeTimer -= delta;
-      if (p.changeTimer <= 0) {
-        p.changeTimer = 4 + Math.random() * 6;
-        const angle = Math.random() * Math.PI * 2;
-        p.direction.set(Math.cos(angle), 0, Math.sin(angle));
+      if (p.isPanicked) {
+        p.panicTimer -= delta;
+        if (p.panicTimer <= 0) {
+          p.isPanicked = false;
+          p.speed = 1.8 + Math.random() * 1.2;
+          const u = p.mesh.userData;
+          u.armL.rotation.z = 0;
+          u.armR.rotation.z = 0;
+        }
+      } else {
+        p.changeTimer -= delta;
+        if (p.changeTimer <= 0) {
+          p.changeTimer = 4 + Math.random() * 6;
+          const angle = Math.random() * Math.PI * 2;
+          p.direction.set(Math.cos(angle), 0, Math.sin(angle));
+        }
       }
 
-      // Move pedestrian
       const move = p.direction.clone().multiplyScalar(p.speed * delta);
       const nextPos = p.mesh.position.clone().add(move);
 
-      // Simple boundary containment
       if (Math.abs(nextPos.x) > 280 || Math.abs(nextPos.z) > 280) {
         p.direction.negate();
       } else {
         p.mesh.position.copy(nextPos);
       }
 
-      // Orient mesh towards direction
       p.mesh.rotation.y = Math.atan2(p.direction.x, p.direction.z);
 
-      // Animate walking limbs
       const u = p.mesh.userData;
       u.animTime += delta * p.speed * 4;
       const legAngle = Math.sin(u.animTime) * 0.45;
       u.legL.rotation.x = legAngle;
       u.legR.rotation.x = -legAngle;
-      u.armL.rotation.x = -legAngle;
-      u.armR.rotation.x = legAngle;
+      if (!p.isPanicked) {
+        u.armL.rotation.x = -legAngle;
+        u.armR.rotation.x = legAngle;
+      }
     }
 
-    // 2. Update Guild Targets
+    // 2. Guild Targets
     for (let i = 0; i < this.targets.length; i++) {
       const t = this.targets[i];
       if (t.isDead) continue;
 
-      // Patrol between waypoints
       const dest = t.patrolPoints[t.currentPatrolIdx];
       const diff = dest.clone().sub(t.mesh.position);
       diff.y = 0;
@@ -344,7 +442,6 @@ class PedestrianManager {
         t.mesh.position.addScaledVector(diff, t.speed * delta);
         t.mesh.rotation.y = Math.atan2(diff.x, diff.z);
 
-        // Animate walk
         const u = t.mesh.userData;
         u.animTime += delta * t.speed * 4;
         const legAngle = Math.sin(u.animTime) * 0.45;
@@ -354,18 +451,45 @@ class PedestrianManager {
         u.armR.rotation.x = legAngle;
       }
 
-      // Rotate target holographic ring
       if (t.mesh.reticle) {
         t.mesh.reticle.rotation.z += delta * 2;
       }
     }
 
-    // 3. Update Ambient Traffic
+    // 3. Police Pursuit AI
+    if (window.game && window.game.player.wantedStars >= 1) {
+      if (!this.policeCruiser) {
+        this.spawnPoliceCruiser(window.game.player.position);
+      } else {
+        // Police cruiser pursues player
+        const playerPos = window.game.player.position;
+        const diff = playerPos.clone().sub(this.policeCruiser.group.position);
+        diff.y = 0;
+        const dist = diff.length();
+
+        if (dist > 3.0) {
+          diff.normalize();
+          this.policeCruiser.group.position.addScaledVector(diff, this.policeCruiser.speed * delta);
+          this.policeCruiser.group.rotation.y = Math.atan2(diff.x, diff.z);
+        }
+
+        // Flashing police strobe
+        this.policeSirenTimer += delta * 15;
+        const flash = Math.sin(this.policeSirenTimer) > 0;
+        this.policeCruiser.redLight.material.color.setHex(flash ? 0xff0022 : 0x220000);
+        this.policeCruiser.blueLight.material.color.setHex(!flash ? 0x0066ff : 0x000033);
+      }
+    } else {
+      if (this.policeCruiser) {
+        this.removePoliceCruiser();
+      }
+    }
+
+    // 4. Traffic Cars
     for (let i = 0; i < this.trafficCars.length; i++) {
       const c = this.trafficCars[i];
       c.group.position.addScaledVector(c.dir, c.speed * delta);
 
-      // Wrap around city boundaries
       if (c.group.position.x > 320) c.group.position.x = -320;
       if (c.group.position.x < -320) c.group.position.x = 320;
       if (c.group.position.z > 320) c.group.position.z = -320;
@@ -375,4 +499,3 @@ class PedestrianManager {
 }
 
 window.PedestrianManager = PedestrianManager;
-

@@ -605,8 +605,81 @@ class GameUI {
   openArmoryModal() {
     const modal = document.getElementById('armory-modal');
     if (!modal) return;
+    const bodyEl = modal.querySelector('.modal-body');
+    if (bodyEl) {
+      const owned = this.game.player.ownedWeapons;
+      const current = this.game.player.currentWeaponKey;
+
+      bodyEl.innerHTML = `
+        <div class="shop-item-card">
+          <h4>🛡️ Heavy Kevlar Body Armor</h4>
+          <p style="font-size:12px; color:#aaa;">Absorbs 100 ballistic damage hits.</p>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+            <span style="color:#2ecc71; font-weight:bold;">$1,000</span>
+            <button class="btn btn-primary btn-sm" onclick="window.game.economy.buyArmoryItem('armor', 1000); window.gameUI.openArmoryModal();">Equip Armor</button>
+          </div>
+        </div>
+
+        <div class="shop-item-card">
+          <h4>🔫 Silenced 9mm Hitman Special</h4>
+          <p style="font-size:12px; color:#aaa;">Integrated titanium suppressor. Silent close/mid-range takedowns.</p>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+            <span style="color:#2ecc71; font-weight:bold;">$3,500</span>
+            ${
+              owned.includes('pistol_silenced')
+                ? `<button class="btn btn-secondary btn-sm" onclick="window.game.economy.buyArmoryItem('pistol_silenced', 0); window.gameUI.openArmoryModal();">${current === 'pistol_silenced' ? 'EQUIPPED' : 'EQUIP'}</button>`
+                : `<button class="btn btn-primary btn-sm" onclick="window.game.economy.buyArmoryItem('pistol_silenced', 3500); window.gameUI.openArmoryModal();">Purchase & Equip</button>`
+            }
+          </div>
+        </div>
+
+        <div class="shop-item-card">
+          <h4>🎯 Ghost Marksman Silenced Sniper</h4>
+          <p style="font-size:12px; color:#aaa;">High-caliber suppressed rifle with 8x Military Mil-Dot Scope. Essential for discreet long-range bounties!</p>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+            <span style="color:#2ecc71; font-weight:bold;">$9,000</span>
+            ${
+              owned.includes('sniper_silenced')
+                ? `<button class="btn btn-secondary btn-sm" onclick="window.game.economy.buyArmoryItem('sniper_silenced', 0); window.gameUI.openArmoryModal();">${current === 'sniper_silenced' ? 'EQUIPPED' : 'EQUIP'}</button>`
+                : `<button class="btn btn-primary btn-sm" onclick="window.game.economy.buyArmoryItem('sniper_silenced', 9000); window.gameUI.openArmoryModal();">Purchase & Equip</button>`
+            }
+          </div>
+        </div>
+      `;
+    }
     modal.classList.add('active');
     this.activeModal = modal;
+  }
+
+  updateWantedHUD(stars) {
+    const starsEl = document.getElementById('hud-wanted-stars');
+    if (!starsEl) return;
+    let starsHtml = '';
+    for (let i = 0; i < 5; i++) {
+      starsHtml += `<span class="star-icon ${i < stars ? 'star-active' : ''}">★</span>`;
+    }
+    starsEl.innerHTML = starsHtml;
+    starsEl.style.display = stars > 0 ? 'flex' : 'none';
+  }
+
+  updateViewModeHUD(mode) {
+    const pill = document.getElementById('hud-viewmode-pill');
+    if (pill) {
+      pill.innerHTML = `🎥 ${mode.toUpperCase()}`;
+    }
+  }
+
+  updateHolsterHUD(isDrawn) {
+    const pill = document.getElementById('hud-holster-pill');
+    if (pill) {
+      if (isDrawn) {
+        pill.className = 'status-pill pill-danger';
+        pill.innerHTML = '⚠️ WEAPON DRAWN';
+      } else {
+        pill.className = 'status-pill pill-safe';
+        pill.innerHTML = '🛡️ CONCEALED (CIVILIAN)';
+      }
+    }
   }
 
   openGuildModal() {
