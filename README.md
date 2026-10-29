@@ -13,19 +13,63 @@ A complete 3D open-world city simulation game built with **Vanilla JavaScript, H
 
 ## 🎮 New & Advanced Gameplay Features
 
-### 1. 🗺️ Massive 30,000 x 30,000 Map & Dynamic City Streaming (Zero Lag)
-- **Huge 30,000 x 30,000 Territory**: An open world spanning from -15,000m to +15,000m, linked by high-speed 4-lane expressways.
-- **Dynamic City Streaming (`CityStreamer`)**: Only the active city (and nearby highway corridor within 2.2km) is rendered in WebGL and queried for collisions. Distant cities are unmounted/hidden, preventing lag and memory exhaustion on any device!
-- **8 Major Cities & Provinces**:
-  1. **Downtown Metropolis** (`0, 0`): Skyscraper core, 138-meter Citadel Tower with rooftop sniper deck, penthouse safehouse, hospital, pizzeria, cab depot, dealership, armory, 24/7 SuperMart, and bank.
-  2. **Vice Beach & Marina** (`3400, 600`): Tropical sandy coast, ocean bay, luxury beachfront villas with swimming pools, palm boulevards, yacht marina, beach bar.
-  3. **Liberty Industrial Port** (`-3200, -3200`): Stacks of freight containers, giant industrial cargo cranes, cargo ships, and warehouses.
-  4. **Maple Valley Suburbs** (`3200, 3400`): Peaceful residential cul-de-sacs, homes with brick chimneys, green lawns, suburban grocery store.
-  5. **Red Rock Badlands** (`-3600, 3600`): Towering sandstone canyon mesas, desert trails, outlaw scrapyards, and Route 66 diner.
-  6. **Neo-Chinatown District** (`600, -3600`): Traditional pagoda gate archways, hanging red glowing paper lanterns, dim sum pavilions, night bazaar.
-  7. **Las Palmas Casino Strip** (`-4200, 1000`): Golden casino pyramid & towers, neon marquees, illuminated fountain plaza, sports car boulevard.
-  8. **Alpine Pines Peak** (`1200, 5000`): Snowy pine tree forest, wooden timber log ski chalets, and mountain fire-lookout tower.
-- **Ocean / Sea Boundary**: Deep sea waters surround the entire map (`14,500m`). Approaching the boundary triggers Coast Guard warnings and safely keeps vehicles and players from plunging off into the void.
+### 1. 🗺️ GTA San Andreas Style Open-World Island Territory
+- **Dense, Alive Island Map (1200m × 1200m)**: Designed in the spirit of iconic open-world GTA maps (San Andreas & Vice City) — compact, dense, and full of life with zero barren voids.
+- **Ocean Coastline & Waterways**: Surrounded by deep blue ocean with golden sand beaches, bisected by navigable central river canals spanned by heavy concrete arched bridges.
+- **6 Distinct Curated Districts**:
+  1. **Downtown Metropolis** (`[20, 180]`): Modern financial core, 138-meter Citadel Tower with elevator to sniper rooftop deck, St. Jude Hospital ER, First National Bank & Vault, Luigi's Pizzeria, Apex Exotic Motors, and 24/7 SuperMart.
+  2. **Vice Beach & Marina** (`[340, 200]`): Golden sand ocean shoreline, luxury beachfront villas with pools, palm tree boulevard, Urban Threads boutique, and Sunset Motel.
+  3. **Liberty Industrial Port** (`[310, -270]`): 32-meter industrial cargo cranes, shipping container yards, warehouses, City Customs mechanic workshop, and the Underground Armory.
+  4. **Neo-Chinatown District** (`[-240, 150]`): Traditional red pagoda entrance gate, glowing paper lanterns, dim sum stalls, and the Black Lotus Assassin Guild safehouse.
+  5. **Las Palmas Casino Strip** (`[-270, -270]`): Golden pyramid casino, neon marquees, luxury hotel towers, high-roller penthouses, and 24/7 casino store.
+  6. **Red Rock Badlands & Mount Chiliad** (`[-330, 410]`): Sandstone canyon mesas, mountain trails, fire lookout tower, and desert compound safehouse.
+
+---
+
+## 📁 Modular Clean Codebase Architecture
+Code is organized into single-responsibility modular folders so each system can be inspected and updated independently:
+
+```
+js/
+├── audio/
+│   └── sound-manager.js       # Procedural Web Audio synthesizer (engine, radio, sirens, SFX)
+├── camera/
+│   └── camera-system.js       # Smartphone camera photo proof & AI bounding box analysis
+├── core/
+│   └── game.js                # Core game orchestrator, inputs, animation loop, resize
+├── economy/
+│   ├── banking.js             # First National ATM kiosks & bank vault heist
+│   ├── construction.js        # Apex Construction Co. property renovation contracts
+│   ├── real-estate.js         # Real estate registry & on-site title deeds
+│   ├── shops.js               # 24/7 SuperMart, armory, dealership & boutique catalogs
+│   └── economy.js             # Unified financial state & persistence
+├── jobs/
+│   ├── job-ambulance.js       # Paramedic 911 emergency rescue shifts
+│   ├── job-assassin.js        # Dark Web assassination contracts & bounties
+│   ├── job-delivery.js        # Luigi's Pizza Express delivery courier shifts
+│   ├── job-taxi.js            # Metro Cab passenger hailing shifts
+│   └── jobs.js                # Unified career manager & sky waypoint beacons
+├── npc/
+│   ├── npc-pedestrians.js     # Citizen models, walking AI, panic reactions, cash drops
+│   ├── npc-police.js          # Police cruiser pursuit, foot chase, bullet tracers & cornering
+│   ├── npc-targets.js         # Assassin Guild VIP targets & patrol loops
+│   ├── npc-traffic.js         # Ambient street traffic vehicles & carjacking
+│   └── npc-manager.js         # Unified NPC & pedestrian orchestrator
+├── player/
+│   ├── player-model.js        # 3D procedural character meshes, clothes, hair & skin tones
+│   ├── player-weapons.js      # Weapons database, holster, sniper scope, ballistics & heat
+│   └── player.js              # Player movement physics, driving link, damage & recovery
+├── ui/
+│   ├── ui-hud.js              # Health, armor, cash, bank, speedometer & prompts
+│   ├── ui-minimap.js          # GTA circular radar, off-screen chevrons & [M] tactical map
+│   ├── ui-modals.js           # ATM, shops, tuning, BUSTED & WASTED screens
+│   ├── ui-phone.js            # VibePhone 16 Pro OS, home screen & apps
+│   └── ui.js                  # Unified GameUI manager & event dispatcher
+└── vehicles/
+    ├── vehicle-model.js       # 3D procedural meshes for cars, ambulances, cabs, supercars
+    ├── vehicle-specs.js       # Vehicle handling, speed, acceleration & tuning specs
+    └── vehicle-manager.js     # Vehicle driving physics, hijacking, tuning & siren controls
+```
 
 ### 2. 🚗 Drive ANY Car & Hijack Ambient Traffic
 - **Drive Any Car in the Game**: Walk up to ANY ambient traffic car driving down the street or parked by the sidewalk and press `[E]`.
