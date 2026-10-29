@@ -1,6 +1,6 @@
 // ============================================================
 // CITY VIBES - COMPLETE UI CONTROLLER
-// Minimap, HUD, In-Game Smartphone, Modals & Shop Windows
+// Minimap, HUD, In-Game Smartphone, Modals & Tuning Workshop
 // ============================================================
 
 class GameUI {
@@ -18,6 +18,7 @@ class GameUI {
     this.armorBarEl = document.getElementById('hud-armor-fill');
     this.speedoEl = document.getElementById('hud-speedometer');
     this.speedValueEl = document.getElementById('speed-value');
+    this.nitroBarEl = document.getElementById('hud-nitro-fill');
     this.interactPromptEl = document.getElementById('hud-interact-prompt');
     this.notificationContainer = document.getElementById('notification-container');
     this.jobHudEl = document.getElementById('hud-job-card');
@@ -94,6 +95,16 @@ class GameUI {
     this.speedoEl.style.display = 'flex';
     const mph = Math.floor(Math.abs(vehicle.speed) * 2.3);
     if (this.speedValueEl) this.speedValueEl.innerText = mph;
+
+    if (this.nitroBarEl) {
+      const nitroContainer = this.nitroBarEl.parentElement;
+      if (vehicle.hasNitro) {
+        nitroContainer.style.display = 'block';
+        this.nitroBarEl.style.width = `${Math.floor(vehicle.nitroFuel)}%`;
+      } else {
+        nitroContainer.style.display = 'none';
+      }
+    }
   }
 
   hideVehicleHUD() {
@@ -191,6 +202,10 @@ class GameUI {
             <div class="icon-box icon-guild">🕷️</div>
             <span>Dark Web</span>
           </div>
+          <div class="phone-app-icon" onclick="window.gameUI.openPhoneApp('avatar')">
+            <div class="icon-box icon-avatar">👤</div>
+            <span>Creator</span>
+          </div>
           <div class="phone-app-icon" onclick="window.gameUI.openPhoneApp('garage')">
             <div class="icon-box icon-garage">🚗</div>
             <span>Garage</span>
@@ -210,8 +225,10 @@ class GameUI {
         </div>
       `;
     } else if (appName === 'camera') {
-      this.togglePhone(); // close phone shell
-      this.game.cameraSystem.toggleCamera(); // open full camera HUD
+      this.togglePhone();
+      this.game.cameraSystem.toggleCamera();
+    } else if (appName === 'avatar') {
+      this.renderCharacterCreatorInPhone(bodyEl);
     } else if (appName === 'jobs') {
       bodyEl.innerHTML = `
         <div class="phone-app-header"><h3>💼 City Careers</h3></div>
@@ -273,7 +290,7 @@ class GameUI {
       let html = `
         <div class="phone-app-header dark-header"><h3>🕷️ The Black Lotus (Dark Web)</h3></div>
         <div class="phone-list">
-          <p style="font-size:11px; color:#aaa; margin-bottom:8px;">Eliminate the target. Snap a photo of their body with the Camera (C) to claim the bounty.</p>
+          <p style="font-size:11px; color:#aaa; margin-bottom:8px;">Eliminate target. Snap photo of fallen body with Camera (C) to claim bounty.</p>
       `;
       contracts.forEach(c => {
         html += `
@@ -288,7 +305,7 @@ class GameUI {
               c.completed
                 ? `<span style="color:#2ecc71; font-weight:bold;">✅ ELIMINATED & BOUNTY CLAIMED</span>`
                 : c.status === 'active'
-                ? `<span style="color:#f1c40f; font-weight:bold;">⚡ CONTRACT ACTIVE - HUNT IN PROGRESS</span>`
+                ? `<span style="color:#f1c40f; font-weight:bold;">⚡ CONTRACT ACTIVE - IN PURSUIT</span>`
                 : `<button class="btn btn-danger btn-sm" onclick="window.game.jobs.acceptAssassinContract('${c.id}'); window.gameUI.openPhoneApp('guild');">Accept Hit</button>`
             }
           </div>
@@ -306,7 +323,7 @@ class GameUI {
           <div class="phone-card">
             <div style="display:flex; justify-content:space-between;">
               <strong>${spec.name}</strong>
-              <span style="font-size:12px; color:#00f0ff;">Top Speed: ${spec.maxSpeed * 2} mph</span>
+              <span style="font-size:12px; color:#00f0ff;">Top: ${Math.floor(spec.maxSpeed * 2.3)} MPH</span>
             </div>
             <button class="btn btn-primary btn-sm" style="margin-top:6px;" onclick="window.game.economy.summonVehicle('${key}'); window.gameUI.togglePhone();">Summon Vehicle Here</button>
           </div>
@@ -351,7 +368,7 @@ class GameUI {
             <div class="phone-photo-item">
               <img src="${p.image}" class="photo-thumb" />
               <div style="font-size:11px; margin-top:4px;">
-                ${p.targetName ? `<strong>Target: ${p.targetName}</strong>` : 'City Snapshot'}
+                ${p.targetName ? `<strong style="color:#2ecc71;">Target: ${p.targetName}</strong>` : 'City Snapshot'}
                 <br><span style="color:#888;">${p.timestamp}</span>
               </div>
             </div>
@@ -378,6 +395,136 @@ class GameUI {
   }
 
   // ------------------------------------------------------------
+  // CHARACTER BUILDER & CUSTOMIZER
+  // ------------------------------------------------------------
+
+  renderCharacterCreatorInPhone(container) {
+    const p = this.game.player;
+    container.innerHTML = `
+      <div class="phone-app-header"><h3>👤 Character Studio</h3></div>
+      <div class="phone-list">
+        <div class="phone-card">
+          <h4>Skin Tone</h4>
+          <div class="swatch-row">
+            <button class="swatch" style="background:#f5cba7;" onclick="window.game.player.setCustomization({skinTone: 0xf5cba7});"></button>
+            <button class="swatch" style="background:#e0ac69;" onclick="window.game.player.setCustomization({skinTone: 0xe0ac69});"></button>
+            <button class="swatch" style="background:#c68642;" onclick="window.game.player.setCustomization({skinTone: 0xc68642});"></button>
+            <button class="swatch" style="background:#8d5524;" onclick="window.game.player.setCustomization({skinTone: 0x8d5524});"></button>
+            <button class="swatch" style="background:#4a2b11;" onclick="window.game.player.setCustomization({skinTone: 0x4a2b11});"></button>
+          </div>
+        </div>
+
+        <div class="phone-card">
+          <h4>Hair Style & Color</h4>
+          <div style="display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap;">
+            <button class="btn btn-sm btn-secondary" onclick="window.game.player.setCustomization({hairStyle:'crew'});">Crew Cut</button>
+            <button class="btn btn-sm btn-secondary" onclick="window.game.player.setCustomization({hairStyle:'slick'});">Slick</button>
+            <button class="btn btn-sm btn-secondary" onclick="window.game.player.setCustomization({hairStyle:'afro'});">Afro</button>
+            <button class="btn btn-sm btn-secondary" onclick="window.game.player.setCustomization({hairStyle:'punk'});">Punk</button>
+          </div>
+          <div class="swatch-row">
+            <button class="swatch" style="background:#111111;" onclick="window.game.player.setCustomization({hairColor: 0x111111});"></button>
+            <button class="swatch" style="background:#5a3825;" onclick="window.game.player.setCustomization({hairColor: 0x5a3825});"></button>
+            <button class="swatch" style="background:#d4ac0d;" onclick="window.game.player.setCustomization({hairColor: 0xd4ac0d});"></button>
+            <button class="swatch" style="background:#bdc3c7;" onclick="window.game.player.setCustomization({hairColor: 0xbdc3c7});"></button>
+            <button class="swatch" style="background:#ff0077;" onclick="window.game.player.setCustomization({hairColor: 0xff0077});"></button>
+          </div>
+        </div>
+
+        <div class="phone-card">
+          <h4>Headwear</h4>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button class="btn btn-sm btn-secondary" onclick="window.game.player.setCustomization({headwear:'none'});">None</button>
+            <button class="btn btn-sm btn-secondary" onclick="window.game.player.setCustomization({headwear:'fedora'});">Fedora</button>
+            <button class="btn btn-sm btn-secondary" onclick="window.game.player.setCustomization({headwear:'cap'});">Cap</button>
+            <button class="btn btn-sm btn-secondary" onclick="window.game.player.setCustomization({headwear:'beanie'});">Beanie</button>
+          </div>
+        </div>
+
+        <div class="phone-card">
+          <h4>Eyewear</h4>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button class="btn btn-sm btn-secondary" onclick="window.game.player.setCustomization({eyewear:'none'});">None</button>
+            <button class="btn btn-sm btn-secondary" onclick="window.game.player.setCustomization({eyewear:'sunglasses'});">Aviator Sunglasses</button>
+            <button class="btn btn-sm btn-secondary" onclick="window.game.player.setCustomization({eyewear:'cyber_visor'});">Cyber Visor</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // ------------------------------------------------------------
+  // CAR MECHANIC & TUNING WORKSHOP MODAL
+  // ------------------------------------------------------------
+
+  openMechanicModal() {
+    const modal = document.getElementById('mechanic-modal');
+    if (!modal) return;
+
+    // Detect vehicle to tune: either currently driving or nearest vehicle
+    const targetVeh = this.game.vehicleManager.activeVehicle || this.game.vehicleManager.getNearestVehicle(this.game.player.position, 8.0);
+    const contentEl = document.getElementById('mechanic-content');
+
+    if (!targetVeh) {
+      contentEl.innerHTML = `
+        <div style="text-align:center; padding:30px;">
+          <h3 style="color:#e74c3c;">No Vehicle In Bay</h3>
+          <p style="color:#aaa; margin-top:8px;">Drive or park a vehicle near City Customs to repair, tune, or paint it!</p>
+        </div>
+      `;
+    } else {
+      contentEl.innerHTML = `
+        <div class="mechanic-grid">
+          <div class="shop-item-card">
+            <h4>${targetVeh.spec.name}</h4>
+            <p style="font-size:12px; color:#aaa;">Condition: <strong style="color:#2ecc71;">${targetVeh.condition}%</strong></p>
+            <button class="btn btn-success btn-sm" style="margin-top:8px;" onclick="if(window.game.economy.spendCash(200)){ window.game.vehicleManager.repairVehicle(window.game.vehicleManager.activeVehicle || window.game.vehicleManager.getNearestVehicle(window.game.player.position, 8.0)); window.gameUI.openMechanicModal(); }">Full Service & Repair ($200)</button>
+          </div>
+
+          <div class="shop-item-card">
+            <h4>🔥 Nitro Boost System (NOS)</h4>
+            <p style="font-size:12px; color:#aaa;">Hold [SHIFT] while driving for extreme acceleration boost!</p>
+            <div style="margin-top:8px;">
+              ${
+                targetVeh.hasNitro
+                  ? `<span class="badge badge-owned">NOS INSTALLED (${Math.floor(targetVeh.nitroFuel)}%)</span>`
+                  : `<button class="btn btn-primary btn-sm" onclick="if(window.game.economy.spendCash(3500)){ (window.game.vehicleManager.activeVehicle || window.game.vehicleManager.getNearestVehicle(window.game.player.position, 8.0)).hasNitro = true; window.game.vehicleManager.installNitro(window.game.vehicleManager.activeVehicle || window.game.vehicleManager.getNearestVehicle(window.game.player.position, 8.0)); window.gameUI.openMechanicModal(); }">Install Nitro ($3,500)</button>`
+              }
+            </div>
+          </div>
+
+          <div class="shop-item-card">
+            <h4>🚀 Engine Performance Tuning</h4>
+            <p style="font-size:12px; color:#aaa;">Current: <strong>Stage ${targetVeh.tuningLevel || 0}</strong></p>
+            <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
+              <button class="btn btn-sm btn-info" onclick="if(window.game.economy.spendCash(2500)){ window.game.vehicleManager.tuneEngine(window.game.vehicleManager.activeVehicle || window.game.vehicleManager.getNearestVehicle(window.game.player.position, 8.0), 1); window.gameUI.openMechanicModal(); }">Stage 1 ($2.5K)</button>
+              <button class="btn btn-sm btn-warning" onclick="if(window.game.economy.spendCash(6500)){ window.game.vehicleManager.tuneEngine(window.game.vehicleManager.activeVehicle || window.game.vehicleManager.getNearestVehicle(window.game.player.position, 8.0), 2); window.gameUI.openMechanicModal(); }">Stage 2 ($6.5K)</button>
+              <button class="btn btn-sm btn-danger" onclick="if(window.game.economy.spendCash(14000)){ window.game.vehicleManager.tuneEngine(window.game.vehicleManager.activeVehicle || window.game.vehicleManager.getNearestVehicle(window.game.player.position, 8.0), 3); window.gameUI.openMechanicModal(); }">Twin Turbo ($14K)</button>
+            </div>
+          </div>
+
+          <div class="shop-item-card">
+            <h4>🎨 Custom Paint Workshop</h4>
+            <p style="font-size:12px; color:#aaa;">Apply premium gloss paint ($500):</p>
+            <div class="swatch-row" style="margin-top:8px;">
+              <button class="swatch" style="background:#111111;" onclick="if(window.game.economy.spendCash(500)) window.game.vehicleManager.repaintVehicle(window.game.vehicleManager.activeVehicle || window.game.vehicleManager.getNearestVehicle(window.game.player.position, 8.0), 0x111111);"></button>
+              <button class="swatch" style="background:#00f0ff;" onclick="if(window.game.economy.spendCash(500)) window.game.vehicleManager.repaintVehicle(window.game.vehicleManager.activeVehicle || window.game.vehicleManager.getNearestVehicle(window.game.player.position, 8.0), 0x00f0ff);"></button>
+              <button class="swatch" style="background:#e74c3c;" onclick="if(window.game.economy.spendCash(500)) window.game.vehicleManager.repaintVehicle(window.game.vehicleManager.activeVehicle || window.game.vehicleManager.getNearestVehicle(window.game.player.position, 8.0), 0xe74c3c);"></button>
+              <button class="swatch" style="background:#f1c40f;" onclick="if(window.game.economy.spendCash(500)) window.game.vehicleManager.repaintVehicle(window.game.vehicleManager.activeVehicle || window.game.vehicleManager.getNearestVehicle(window.game.player.position, 8.0), 0xf1c40f);"></button>
+              <button class="swatch" style="background:#8e44ad;" onclick="if(window.game.economy.spendCash(500)) window.game.vehicleManager.repaintVehicle(window.game.vehicleManager.activeVehicle || window.game.vehicleManager.getNearestVehicle(window.game.player.position, 8.0), 0x8e44ad);"></button>
+              <button class="swatch" style="background:#ffffff;" onclick="if(window.game.economy.spendCash(500)) window.game.vehicleManager.repaintVehicle(window.game.vehicleManager.activeVehicle || window.game.vehicleManager.getNearestVehicle(window.game.player.position, 8.0), 0xffffff);"></button>
+              <button class="swatch" style="background:#27ae60;" onclick="if(window.game.economy.spendCash(500)) window.game.vehicleManager.repaintVehicle(window.game.vehicleManager.activeVehicle || window.game.vehicleManager.getNearestVehicle(window.game.player.position, 8.0), 0x27ae60);"></button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    modal.classList.add('active');
+    this.activeModal = modal;
+  }
+
+  // ------------------------------------------------------------
   // IN-WORLD SHOP MODALS
   // ------------------------------------------------------------
 
@@ -396,7 +543,7 @@ class GameUI {
       card.className = 'shop-item-card';
       card.innerHTML = `
         <h4>${spec.name}</h4>
-        <p style="font-size:12px; color:#aaa;">Speed: ${spec.maxSpeed * 2} mph | Accel: ${spec.accel}</p>
+        <p style="font-size:12px; color:#aaa;">Speed: ${Math.floor(spec.maxSpeed * 2.3)} MPH | Accel: ${spec.accel}</p>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
           <span style="font-weight:bold; color:#2ecc71;">$${spec.price.toLocaleString()}</span>
           ${
@@ -431,7 +578,7 @@ class GameUI {
 
     outfits.forEach(outfit => {
       const isOwned = this.game.economy.ownedOutfits.includes(outfit.id);
-      const isEquipped = this.game.player.currentOutfit === outfit.id;
+      const isEquipped = this.game.player.custom.outfit === outfit.id;
 
       const card = document.createElement('div');
       card.className = 'shop-item-card';
@@ -495,11 +642,10 @@ class GameUI {
     const canvas = this.minimapCanvas;
     const size = canvas.width;
     const center = size / 2;
-    const scale = 0.28; // world to radar scale
+    const scale = 0.28;
 
     ctx.clearRect(0, 0, size, size);
 
-    // Dark Radar Background
     ctx.save();
     ctx.beginPath();
     ctx.arc(center, center, center - 2, 0, Math.PI * 2);
@@ -508,32 +654,29 @@ class GameUI {
     ctx.fillStyle = '#11171d';
     ctx.fillRect(0, 0, size, size);
 
-    // City Center offset relative to player
     const playerPos = this.game.player.position;
 
-    // Draw Roads (Grid lines)
-    const step = (this.game.world.blockSize + this.game.world.roadWidth) * scale;
+    // Roads
+    const totalStep = this.game.world.blockSize + this.game.world.roadWidth;
     ctx.strokeStyle = '#22303c';
     ctx.lineWidth = 5;
 
     for (let i = -3; i <= 3; i++) {
-      const rx = center + (i * (this.game.world.blockSize + this.game.world.roadWidth) - playerPos.x) * scale;
-      const rz = center + (i * (this.game.world.blockSize + this.game.world.roadWidth) - playerPos.z) * scale;
+      const rx = center + (i * totalStep - playerPos.x) * scale;
+      const rz = center + (i * totalStep - playerPos.z) * scale;
 
-      // Vertical road
       ctx.beginPath();
       ctx.moveTo(rx, 0);
       ctx.lineTo(rx, size);
       ctx.stroke();
 
-      // Horizontal road
       ctx.beginPath();
       ctx.moveTo(0, rz);
       ctx.lineTo(size, rz);
       ctx.stroke();
     }
 
-    // Draw Interactive Landmarks
+    // Interactive Landmarks
     this.game.world.interactiveSpots.forEach(spot => {
       const sx = center + (spot.position.x - playerPos.x) * scale;
       const sz = center + (spot.position.z - playerPos.z) * scale;
@@ -544,7 +687,7 @@ class GameUI {
       ctx.fill();
     });
 
-    // Draw Mission Objective Blip
+    // Mission Objective
     if (this.game.jobs.activeMission) {
       const dest =
         this.game.jobs.activeMission.stage === 'deliver' || this.game.jobs.activeMission.stage === 'dropoff'
@@ -562,7 +705,7 @@ class GameUI {
       }
     }
 
-    // Draw Assassin Target Blip
+    // Assassin Targets
     this.game.pedestrianManager.targets.forEach(t => {
       const tx = center + (t.mesh.position.x - playerPos.x) * scale;
       const tz = center + (t.mesh.position.z - playerPos.z) * scale;
@@ -573,7 +716,7 @@ class GameUI {
       ctx.fill();
     });
 
-    // Draw Player Arrow in center
+    // Player Direction Arrow
     ctx.save();
     ctx.translate(center, center);
     const angle = this.game.vehicleManager.activeVehicle
@@ -591,8 +734,9 @@ class GameUI {
     ctx.fill();
     ctx.restore();
 
-    // Radar Glass overlay circle
     ctx.restore();
+
+    // Radar border
     ctx.strokeStyle = '#00f0ff';
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -610,4 +754,3 @@ class GameUI {
 }
 
 window.GameUI = GameUI;
-

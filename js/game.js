@@ -16,11 +16,14 @@ class CityGame {
       sprint: false,
       jump: false,
       handbrake: false,
+      turnLeft: false,
+      turnRight: false,
       mouseDeltaX: 0,
       mouseDeltaY: 0,
       isMouseDown: false
     };
 
+    this.isPointerLocked = false;
     this.initThree();
     this.initSystems();
     this.initInputListeners();
@@ -41,7 +44,7 @@ class CityGame {
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
       powerPreference: 'high-performance',
-      preserveDrawingBuffer: true // Required for smartphone camera snapshot!
+      preserveDrawingBuffer: true
     });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -50,25 +53,24 @@ class CityGame {
     this.container.appendChild(this.renderer.domElement);
 
     // 4. Lighting & Day/Night Atmosphere
-    this.ambientLight = new THREE.AmbientLight(0xddeeff, 0.6);
+    this.ambientLight = new THREE.AmbientLight(0xddeeff, 0.7);
     this.scene.add(this.ambientLight);
 
-    this.sunLight = new THREE.DirectionalLight(0xfffaed, 1.2);
+    this.sunLight = new THREE.DirectionalLight(0xfffaed, 1.25);
     this.sunLight.position.set(80, 160, 100);
     this.sunLight.castShadow = true;
     this.sunLight.shadow.mapSize.width = 2048;
     this.sunLight.shadow.mapSize.height = 2048;
     this.sunLight.shadow.camera.near = 10;
     this.sunLight.shadow.camera.far = 400;
-    const d = 120;
+    const d = 140;
     this.sunLight.shadow.camera.left = -d;
     this.sunLight.shadow.camera.right = d;
     this.sunLight.shadow.camera.top = d;
     this.sunLight.shadow.camera.bottom = -d;
     this.scene.add(this.sunLight);
 
-    // Blue night hemisphere light
-    this.hemiLight = new THREE.HemisphereLight(0x224466, 0x112233, 0.4);
+    this.hemiLight = new THREE.HemisphereLight(0x224466, 0x112233, 0.45);
     this.scene.add(this.hemiLight);
 
     window.addEventListener('resize', () => this.onWindowResize());
@@ -110,153 +112,177 @@ class CityGame {
     window.gameUI = this.ui;
     window.game = this;
 
-    // Initial balance update
     this.ui.updateBalance(this.economy.cash, this.economy.bank);
 
-    // Start with pleasant intro notification
     setTimeout(() => {
       this.ui.showNotification(
-        '🌟 Welcome to City Vibes! Press [E] to drive or enter shops. Press [C] to open your phone & camera!',
+        '🌟 Welcome to City Vibes! Use WASD to walk, [E] to drive or enter shops. Press [P] or [C] for your phone & camera!',
         'info',
         8000
       );
-    }, 1000);
+    }, 800);
   }
 
   initInputListeners() {
-    let isPointerLocked = false;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+    let isDragging = false;
 
-    // Pointer Lock on click (if not clicking UI)
-    window.addEventListener('mousedown', e => {
-      // Don't capture if clicking over UI panels or modals
-      if (
-        e.target.closest('#smartphone-modal') ||
-        e.target.closest('.game-modal') ||
-        e.target.closest('#hud-container') ||
-        e.target.closest('.camera-viewfinder')
-      ) {
+    // Canvas click to request pointer lock & attack/photo
+    this.renderer.domElement.addEventListener('mousedown', e => {
+      window.soundManager.ensureContext();
+      isDragging = true;
+      lastMouseX = e.clientX;
+      lastMouseY = e.clientY;
+
+      if (e.target.closest('#smartphone-modal') || e.target.closest('.game-modal')) {
         return;
       }
 
-      window.soundManager.ensureContext();
-
       if (this.cameraSystem.isActive) {
-        // Snap photo with smartphone camera!
         this.cameraSystem.capturePhoto();
       } else {
-        // Attack / shoot weapon
-        this.player.attack();
+        if (!this.vehicleManager.activeVehicle) {
+          this.player.attack();
+        }
       }
+
+      // Request pointer lock on click if desired
+      if (!this.isPointerLocked && !this.ui.isPhoneOpen && !this.ui.activeModal) {
+        try {
+          this.renderer.domElement.requestPointerLock();
+        } catch (err) {}
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+
+    document.addEventListener('pointerlockchange', () => {
+      this.isPointerLocked = document.pointerLockElement === this.renderer.domElement;
     });
 
     window.addEventListener('mousemove', e => {
-      if (document.pointerLockElement === document.body || e.buttons === 1 || e.buttons === 2) {
+      if (this.isPointerLocked) {
         this.input.mouseDeltaX = e.movementX || 0;
         this.input.mouseDeltaY = e.movementY || 0;
+      } else if (isDragging) {
+        const dx = e.clientX - lastMouseX;
+        const dy = e.clientY - lastMouseY;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+        this.input.mouseDeltaX = dx;
+        this.input.mouseDeltaY = dy;
       }
     });
 
-    // Keyboard bindings
+    // Keyboard bindings (Both code and key supported for maximum cross-browser/international reliability)
     window.addEventListener('keydown', e => {
       window.soundManager.ensureContext();
       const code = e.code;
+      const key = e.key.toLowerCase();
 
-      if (code === 'KeyW' || code === 'ArrowUp') this.input.forward = true;
-      if (code === 'KeyS' || code === 'ArrowDown') this.input.backward = true;
-      if (code === 'KeyA' || code === 'ArrowLeft') this.input.left = true;
-      if (code === 'KeyD' || code === 'ArrowRight') this.input.right = true;
-      if (code === 'ShiftLeft' || code === 'ShiftRight') this.input.sprint = true;
-      if (code === 'Space') {
+      if (code === 'KeyW' || key === 'w' || code === 'ArrowUp') this.input.forward = true;
+      if (code === 'KeyS' || key === 's' || code === 'ArrowDown') this.input.backward = true;
+      if (code === 'KeyA' || key === 'a' || code === 'ArrowLeft') this.input.left = true;
+      if (code === 'KeyD' || key === 'd' || code === 'ArrowRight') this.input.right = true;
+
+      // Camera turn keys (Q & E when not interacting, or Left/Right arrows on foot)
+      if (code === 'KeyQ' || key === 'q') this.input.turnLeft = true;
+
+      if (code === 'ShiftLeft' || code === 'ShiftRight' || key === 'shift') this.input.sprint = true;
+      if (code === 'Space' || key === ' ') {
         this.input.jump = true;
         this.input.handbrake = true;
       }
 
-      // Enter / Exit Vehicle OR Interact with Landmark ('E' or 'F')
-      if (code === 'KeyE' || code === 'KeyF') {
+      // Interaction key ('E' or 'F')
+      if (code === 'KeyE' || key === 'e' || code === 'KeyF' || key === 'f') {
         this.handleInteraction();
       }
 
-      // Smartphone Camera Toggle ('KeyC')
-      if (code === 'KeyC') {
+      // Smartphone Camera ('KeyC')
+      if (code === 'KeyC' || key === 'c') {
         this.cameraSystem.toggleCamera();
       }
 
-      // Smartphone Shell Toggle ('KeyP')
-      if (code === 'KeyP') {
+      // Smartphone Shell ('KeyP')
+      if (code === 'KeyP' || key === 'p') {
         this.ui.togglePhone();
       }
 
-      // Vehicle Siren Toggle ('KeyJ')
-      if (code === 'KeyJ') {
+      // Vehicle Siren ('KeyJ')
+      if (code === 'KeyJ' || key === 'j') {
         this.vehicleManager.toggleActiveSiren();
       }
 
       // Vehicle Horn ('KeyH')
-      if (code === 'KeyH') {
+      if (code === 'KeyH' || key === 'h') {
         window.soundManager.playHorn();
       }
 
-      // Next Radio Station ('KeyR')
-      if (code === 'KeyR') {
+      // Radio Station Next ('KeyR')
+      if (code === 'KeyR' || key === 'r') {
         const station = window.soundManager.nextRadioStation();
         this.ui.showNotification(`📻 ${station.name}`, 'radio', 3000);
       }
 
-      // Weapon switching ('Digit1', 'Digit2', 'Digit3')
-      if (code === 'Digit1') {
+      // Weapon selection ('1', '2', '3')
+      if (code === 'Digit1' || key === '1') {
         this.player.currentWeaponIdx = 0;
         this.ui.showNotification('Equipped: Unarmed / Fists', 'weapon');
-      } else if (code === 'Digit2') {
+      } else if (code === 'Digit2' || key === '2') {
         this.player.currentWeaponIdx = 1;
         this.ui.showNotification('Equipped: Silenced 9mm Pistol', 'weapon');
-      } else if (code === 'Digit3') {
+      } else if (code === 'Digit3' || key === '3') {
         this.player.currentWeaponIdx = 2;
         this.ui.showNotification('Equipped: Ghost Marksman Sniper', 'weapon');
       }
 
-      // Close open modals with Escape
-      if (code === 'Escape') {
+      // Escape key to close modals/phone/camera
+      if (code === 'Escape' || key === 'escape') {
         this.ui.closeAllModals();
         if (this.cameraSystem.isActive) this.cameraSystem.toggleCamera();
         if (this.ui.isPhoneOpen) this.ui.togglePhone();
+        if (document.exitPointerLock) document.exitPointerLock();
       }
     });
 
     window.addEventListener('keyup', e => {
       const code = e.code;
-      if (code === 'KeyW' || code === 'ArrowUp') this.input.forward = false;
-      if (code === 'KeyS' || code === 'ArrowDown') this.input.backward = false;
-      if (code === 'KeyA' || code === 'ArrowLeft') this.input.left = false;
-      if (code === 'KeyD' || code === 'ArrowRight') this.input.right = false;
-      if (code === 'ShiftLeft' || code === 'ShiftRight') this.input.sprint = false;
-      if (code === 'Space') {
+      const key = e.key.toLowerCase();
+
+      if (code === 'KeyW' || key === 'w' || code === 'ArrowUp') this.input.forward = false;
+      if (code === 'KeyS' || key === 's' || code === 'ArrowDown') this.input.backward = false;
+      if (code === 'KeyA' || key === 'a' || code === 'ArrowLeft') this.input.left = false;
+      if (code === 'KeyD' || key === 'd' || code === 'ArrowRight') this.input.right = false;
+      if (code === 'KeyQ' || key === 'q') this.input.turnLeft = false;
+
+      if (code === 'ShiftLeft' || code === 'ShiftRight' || key === 'shift') this.input.sprint = false;
+      if (code === 'Space' || key === ' ') {
         this.input.jump = false;
         this.input.handbrake = false;
       }
     });
-
-    // Optional PointerLock request on canvas double click
-    this.renderer.domElement.addEventListener('dblclick', () => {
-      document.body.requestPointerLock();
-    });
   }
 
   handleInteraction() {
-    // 1. If currently driving a vehicle -> Exit Vehicle
+    // 1. If currently driving -> Exit Vehicle
     if (this.vehicleManager.activeVehicle) {
       this.vehicleManager.exitVehicle(this.player);
       return;
     }
 
     // 2. Check if near any vehicle -> Enter Vehicle
-    const nearVehicle = this.vehicleManager.getNearestVehicle(this.player.position, 3.8);
+    const nearVehicle = this.vehicleManager.getNearestVehicle(this.player.position, 4.2);
     if (nearVehicle) {
       this.vehicleManager.enterVehicle(nearVehicle, this.player);
       return;
     }
 
-    // 3. Check if near an interactive landmark (Hospital, Pizzeria, Taxi Depot, Guild, Shops, Properties)
-    const nearSpot = this.world.getNearestInteractive(this.player.position, 5.0);
+    // 3. Check interactive landmarks
+    const nearSpot = this.world.getNearestInteractive(this.player.position, 5.2);
     if (nearSpot) {
       if (nearSpot.action === 'ambulance_job') {
         this.jobs.startAmbulanceShift();
@@ -272,8 +298,9 @@ class CityGame {
         this.ui.openClothesModal();
       } else if (nearSpot.action === 'open_armory') {
         this.ui.openArmoryModal();
+      } else if (nearSpot.action === 'open_mechanic') {
+        this.ui.openMechanicModal();
       } else if (nearSpot.action === 'interact_property') {
-        // Open Real Estate app on property
         this.ui.openPhoneApp('realestate');
         if (!this.ui.isPhoneOpen) this.ui.togglePhone();
       }
@@ -289,12 +316,12 @@ class CityGame {
   animate() {
     requestAnimationFrame(() => this.animate());
 
-    const delta = Math.min(this.clock.getDelta(), 0.1);
+    const delta = Math.min(this.clock.getDelta(), 0.08);
 
-    // 1. Update Player Character & Camera
+    // 1. Update Player Character & Movement
     this.player.update(delta, this.input);
 
-    // 2. Update Vehicle Physics & Active Driving
+    // 2. Update Vehicle Physics & Driving
     this.vehicleManager.update(delta, this.input);
 
     // 3. Update Pedestrians, Traffic & Assassin Targets
@@ -309,16 +336,16 @@ class CityGame {
     // 6. Update Real Estate & Economy
     this.economy.update(delta);
 
-    // 7. Update Smartphone Camera AI Tracking
+    // 7. Update Smartphone Camera AI
     this.cameraSystem.update(delta);
 
     // 8. Update UI & Minimap
     this.ui.update(delta);
 
-    // 9. Interaction Prompt Checking
+    // 9. Prompt Checking
     this.checkPrompts();
 
-    // 10. Render 3D Scene
+    // 10. Render
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -326,17 +353,18 @@ class CityGame {
     if (this.vehicleManager.activeVehicle) {
       const v = this.vehicleManager.activeVehicle;
       const sirenText = v.spec.hasSiren ? ' | [J] Siren' : '';
-      this.ui.showInteractionPrompt(`[E] Exit ${v.spec.name} | [H] Horn${sirenText} | [R] Radio`);
+      const nitroText = v.hasNitro ? ` | [Shift] NOS (${Math.floor(v.nitroFuel)}%)` : '';
+      this.ui.showInteractionPrompt(`[E] Exit ${v.spec.name} | [H] Horn${sirenText}${nitroText} | [R] Radio`);
       return;
     }
 
-    const nearVehicle = this.vehicleManager.getNearestVehicle(this.player.position, 3.8);
+    const nearVehicle = this.vehicleManager.getNearestVehicle(this.player.position, 4.2);
     if (nearVehicle) {
       this.ui.showInteractionPrompt(`[E] Drive ${nearVehicle.spec.name}`);
       return;
     }
 
-    const nearSpot = this.world.getNearestInteractive(this.player.position, 5.0);
+    const nearSpot = this.world.getNearestInteractive(this.player.position, 5.2);
     if (nearSpot) {
       this.ui.showInteractionPrompt(`[E] Enter ${nearSpot.name}`);
       return;
@@ -350,4 +378,3 @@ class CityGame {
 window.addEventListener('DOMContentLoaded', () => {
   new CityGame();
 });
-

@@ -61,13 +61,18 @@
     <!-- Notification Toasts Stack -->
     <div id="notification-container"></div>
 
-    <!-- Center Prompt -->
-    <div id="hud-interact-prompt">[E] Drive Vehicle</div>
+    <!-- Center Interaction Prompt (Clickable or press E) -->
+    <div id="hud-interact-prompt" onclick="if(window.game) window.game.handleInteraction();">[E] Drive Vehicle</div>
 
-    <!-- Driving Speedometer -->
+    <!-- Driving Speedometer & Nitro -->
     <div id="hud-speedometer">
-      <span id="speed-value" class="speed-num">0</span>
-      <span class="speed-unit">MPH</span>
+      <div class="speedo-row">
+        <span id="speed-value" class="speed-num">0</span>
+        <span class="speed-unit">MPH</span>
+      </div>
+      <div class="stat-bar nitro-bar-wrap">
+        <div id="hud-nitro-fill" class="stat-bar-fill nitro-fill" style="width: 100%;"></div>
+      </div>
     </div>
 
     <!-- Job Mission Status Card -->
@@ -126,13 +131,22 @@
     <div id="cardealer-list" class="modal-body"></div>
   </div>
 
-  <!-- Clothes Boutique Modal -->
+  <!-- Clothes & Outfits Boutique Modal -->
   <div id="clothes-modal" class="game-modal">
     <div class="modal-header">
       <h2>👔 Urban Threads Boutique</h2>
       <button class="modal-close-btn">&times;</button>
     </div>
     <div id="clothes-list" class="modal-body"></div>
+  </div>
+
+  <!-- City Customs Mechanic & Tuning Modal -->
+  <div id="mechanic-modal" class="game-modal">
+    <div class="modal-header">
+      <h2>🔧 City Customs (Mechanic & Tuning)</h2>
+      <button class="modal-close-btn">&times;</button>
+    </div>
+    <div id="mechanic-content" class="modal-body" style="display:block;"></div>
   </div>
 
   <!-- Armory & Black Market Modal -->
@@ -184,4 +198,3 @@
 
 </body>
 </html>
-

@@ -10,10 +10,10 @@ class JobManager {
     this.activeMission = null;
 
     // Hospital / Patient locations
-    this.hospitalPos = new THREE.Vector3(-1 * (60 + 18), 1, 0 + 26);
-    this.pizzeriaPos = new THREE.Vector3(1 * (60 + 18), 1, 0 + 22);
-    this.taxiDepotPos = new THREE.Vector3(0, 1, 1 * (60 + 18) + 22);
-    this.guildPos = new THREE.Vector3(-2 * (60 + 18), 1, -2 * (60 + 18) + 25);
+    this.hospitalPos = new THREE.Vector3(-39, 1, 15);
+    this.pizzeriaPos = new THREE.Vector3(117, 1, 19);
+    this.taxiDepotPos = new THREE.Vector3(39, 1, 97);
+    this.guildPos = new THREE.Vector3(-117, 1, -93);
 
     // 3D Visual Mission Waypoint Marker Beacon
     this.beaconGroup = new THREE.Group();
